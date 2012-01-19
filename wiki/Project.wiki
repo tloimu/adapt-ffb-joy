@@ -40,6 +40,7 @@ There are a few example in web how to do this with a joystick-like HID. It is pr
 The descriptor should allow at least:
   * Constant, Sine and Triangle waveforms
   * Duration parameter
+  * Direction parameter(s)
   * Periodic parameters (include frequency and amplitude, exclude Phase)
   * Ramp and envelope parameters for attack and fade
 
