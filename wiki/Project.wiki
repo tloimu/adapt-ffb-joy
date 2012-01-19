@@ -55,3 +55,7 @@ The code should be as plain C as possible to be easily (or with no effort) be in
 === Finalize the MIDI data analysis on effect parameters ===
 
 Although many effect parameters have already been discovered from the MIDI data, a full description of all parameters and their data types is still missing.
+
+=== Integrate with 3DPVert ===
+
+Integrate with 3DPVert to have full blown game port FFB Sidewinder joystick to USB.
