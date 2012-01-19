@@ -1,0 +1,46 @@
+#Project plan and status
+
+= Project Plan and Status =
+
+This page contains the project's plan and status. It lists what is still missing.
+
+
+== To Do ==
+
+Things still to do.
+
+=== How to Enable Sidewinder Force Feedback Pro's FFB Mode ===
+
+It is still unknown how to consistently enable FFP to accept the MIDI data for FFB effects and control.
+
+From the forums of DescentBB posts of "cal":
+
+	_I cut the MIDI-wire on the joystick and took both end out of it, so that I can have the stick on actual game port and still have full control on the MIDI-line to the stick with a Teensy.
+	I can now consistently control the effects on the joystick with a Teensy. There seemed to be some timing related issues i.e. that after certain commands, the joystick needs to be given a bit time to process them. I can start and stop a few pre-recorded effects and disable and enable the auto-center spring effect on the stick.
+	The problem still is that I need to get the stick "in the mood" to get my MIDI-commands. With the 3DPVert, the stick is NOT "in the mood". Actually, the stick is not "on the mood" by default even when it is connected to a real game port.
+	When connected to a real game port, opening FEdit in XP seems to do the trick. After that I can send commands and the joystick replies as expected. If I issue a command to re-enable the default auto-center spring effect as of going "out of application scope" I have to restart FEdit to put the stick back to the "mood" to receive commands.
+	The funny thing is that FEdit (or any application using FFB) can put the stick to the mood even if the MIDI-wire is completely disconnected. Which means, that the game port is talking to the stick also on FFB-related matters (at least this "mood switch") using the conventional pins instead of MIDI._
+
+...and...
+
+	_It is not all MIDI. The stick consistently goes into some "FFB mode" even when I have MIDI pin disconnected between the stick and game port when I startup FEdit. And only after that I can feed it the MIDI data so that the stick actually executes the given effects.
+
+	I even shorted the MIDI pin from the game port to ground (with a small resistor for safety) to prevent any crosstalk. And thus, I'm quite confident that the stick is not getting anything thru to the stick's MIDI input from game port and it still switches its mode. There is even a slight, but immediate and recognizable change in how the stick's auto-center-spring behaves right after starting FEdit (which also notices that it was not able to disable the auto-center-spring - as if game port would somehow also get feedback of the mode switch).
+
+	I don't have a scope. So, if anyone with one could see what's happening in the axis/button pins at the moment of an FFB-using application starts up and sets the stick to the "FFB mode"._
+
+
+
+=== USB HID Descriptor ==
+
+A working USB HID descriptor with force feedback parts is needed. HID specs on physical devices is to be consulted (see USB.org's doc on HID PID).
+
+There are a few example in web how to do this with a joystick-like HID. It is preferrable to have a HID descriptor that is based on the 3DPVert-project's Sidewinder ForceFeedback Pro, but that would add the FFB parts to it.
+
+Note: AVR megas that do not have hardware USB (ie. ones that need to use the software USB) seem to have limitation on how large the HID descriptor can be and FFB seems to grow the descriptor size over those limits. However, Tweeny 2.0(++) has no such limit since they have hardware USB.
+
+=== Converting USB data to MIDI ===
+
+C-code for converting the FFB USB reports from PC must be converted to MIDI data.
+
+The code should be as plain C as possible to be easily (or with no effort) be included to different projects on various hardware platforms. It also simplifies unit testing during development since the same code could be ran on a PC too.
