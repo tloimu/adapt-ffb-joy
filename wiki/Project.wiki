@@ -37,6 +37,12 @@ A working USB HID descriptor with force feedback parts is needed. HID specs on p
 
 There are a few example in web how to do this with a joystick-like HID. It is preferrable to have a HID descriptor that is based on the 3DPVert-project's Sidewinder ForceFeedback Pro, but that would add the FFB parts to it.
 
+The descriptor should allow at least:
+* Constant, Sine and Triangle waveforms
+* Duration parameter
+* Periodic parameters (include frequency and amplitude, exclude Phase)
+* Ramp and envelope parameters for attack and fade
+
 Note: AVR megas that do not have hardware USB (ie. ones that need to use the software USB) seem to have limitation on how large the HID descriptor can be and FFB seems to grow the descriptor size over those limits. However, Tweeny 2.0(++) has no such limit since they have hardware USB.
 
 === Converting USB data to MIDI ===
@@ -44,3 +50,7 @@ Note: AVR megas that do not have hardware USB (ie. ones that need to use the sof
 C-code for converting the FFB USB reports from PC must be converted to MIDI data.
 
 The code should be as plain C as possible to be easily (or with no effort) be included to different projects on various hardware platforms. It also simplifies unit testing during development since the same code could be ran on a PC too.
+
+=== Finalize the MIDI data analysis on effect parameters ===
+
+Although many effect parameters have already been discovered from the MIDI data, a full description of all parameters and their data types is still missing.
