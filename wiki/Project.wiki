@@ -38,10 +38,10 @@ A working USB HID descriptor with force feedback parts is needed. HID specs on p
 There are a few example in web how to do this with a joystick-like HID. It is preferrable to have a HID descriptor that is based on the 3DPVert-project's Sidewinder ForceFeedback Pro, but that would add the FFB parts to it.
 
 The descriptor should allow at least:
-* Constant, Sine and Triangle waveforms
-* Duration parameter
-* Periodic parameters (include frequency and amplitude, exclude Phase)
-* Ramp and envelope parameters for attack and fade
+  * Constant, Sine and Triangle waveforms
+  * Duration parameter
+  * Periodic parameters (include frequency and amplitude, exclude Phase)
+  * Ramp and envelope parameters for attack and fade
 
 Note: AVR megas that do not have hardware USB (ie. ones that need to use the software USB) seem to have limitation on how large the HID descriptor can be and FFB seems to grow the descriptor size over those limits. However, Tweeny 2.0(++) has no such limit since they have hardware USB.
 
