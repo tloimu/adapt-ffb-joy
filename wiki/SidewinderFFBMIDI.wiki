@@ -1,3 +1,5 @@
+# Reverse engineering Sidewinder joystick force feedback protocol
+
 =Controlling Force Feedback of Microsoft Sidewinder Force Feedback Pro Joystick=
 	
 This document is a working document on reverse engineering Microsoft Sidewinder Force Feedback Pro Joystick (FFP) force feedback (FFB) functionality. The long term goal is to be able to develop adapter software also for the joystick's force feedback functionality via a USB-adapter and this is only one step towards that goal. Since Microsoft has already years ago pulled the plug in supporting this game port joystick at any level, I see no shame in reverse engineering its features in order to be able to use the joystick on more modern operating systems and hardware platforms and avoid creating polluting waste out of perfectly functioning piece of hardware.
