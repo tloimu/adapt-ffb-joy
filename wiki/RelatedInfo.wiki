@@ -1,0 +1,29 @@
+#summary Contains FFB and FFB joystick related links and information
+
+= Related Background Information =
+
+This page gathers interesting and potentially useful FFB and FFB joystick related links and information.
+
+== USB HID ==
+
+Here are links to some basic background information:
+  * [http://www.usb.org/developers/devclass_docs/HID1_11.pdf Device Class Definition for Human Interface Devices (HID)]
+  * For force feedback USB devices the official HID document [http://www.usb.org/developers/devclass_docs/pid1_01.pdf USB Physical Interface Device (PID) Class]
+
+and some projects and discussions:
+  * [http://www.lvr.com/hidpage.htm Jan Axelson's USB HID] and there [http://www.inebriated-innovation.org/ifeel/ his experiments with force feedback of Logitech iFeel Mouse]
+  * Discussion of [http://forums.obdev.at/viewtopic.php?f=8&t=4313&start=15 force feedback HID in Object Development Forums]
+  * Discussion at [http://www.microchip.com/forums/m487478-print.aspx Microship's forums]
+
+== Windows HID Driver ==
+
+Links and information that relate to Windows HID driver:
+  * [http://www.lvr.com/forum/index.php?action=printpage;topic=417.0 Samples of some FFB registry entries]
+
+== MS Sidewinder Joysticks ==
+
+Links to information about Microsoft Sidewinder joystics (with and without FFB):
+  * AVR-based USB-adapter for Microsoft Sidewinder 3DP, FFP and PP [http://code.google.com/p/sw3dprousb/ 3DPVert]
+  * Discussion about [http://www.descentbb.net/viewtopic.php?f=8&t=19061 force feedback adaptation at tech forums in DescentBB] about this kind of projects
+  * Discussion thread at [http://answers.microsoft.com/en-us/windows/forum/windows_other-hardware/midi-force-feedback-protocol/2d1f18cc-c47c-e011-9b4b-68b599b31bf5?msgId=c867a34b-397d-e011-9b4b-68b599b31bf5 Microsoft Answers] about the topic
+  * Source code of [http://www.cs.fsu.edu/~baker/devices/lxr/http/source/linux/drivers/input/joystick/sidewinder.c Sidewinder support in Linux kernel as in sidewinder.c]
