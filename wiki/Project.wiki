@@ -1,4 +1,4 @@
-#Project plan and status
+#summary Project plan and status
 
 = Project Plan and Status =
 
