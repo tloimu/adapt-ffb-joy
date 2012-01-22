@@ -1,10 +1,11 @@
 #summary Initialization procedure of FFB mode for FFP's
+#labels Featured
 
 = Introduction =
 
 A tester connected to real game port's X1-line prints the following interrupt sequences at enumeration and startup of an FFB application:
 
-(The log below has microsecond offset timestamps at the end after the "+"-sign)
+(The log below has microsecond offset timestamps at the end after the "+"-sign - timestamps are in maximum of 4us resolution and may have slight distortion - but this should give the overview)
 
 {{{
 1000000000: INTERRUPT from X1 (0)
