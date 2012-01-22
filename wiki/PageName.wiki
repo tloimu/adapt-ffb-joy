@@ -1,5 +1,5 @@
 #summary Microsoft Sidewinder Force Feedback Pro Joystick details
-#Featured
+#labels Featured
 
 = Microsoft Sidewinder Force Feedback Pro Joystick details =
 
