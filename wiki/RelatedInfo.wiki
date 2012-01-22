@@ -15,11 +15,13 @@ and some projects and discussions:
   * [http://www.lvr.com/hidpage.htm Jan Axelson's USB HID] and there [http://www.inebriated-innovation.org/ifeel/ his experiments with force feedback of Logitech iFeel Mouse]
   * Discussion of [http://forums.obdev.at/viewtopic.php?f=8&t=4313&start=15 force feedback HID in Object Development Forums]
   * Another discussion at [http://www.microchip.com/forums/m487478-print.aspx Microship's forums]
+  * Yet one discussion [http://forums.obdev.at/viewtopic.php?f=8&t=4313 in ObjDev about non-USB AVRs and FFB HID]
 
 == Windows HID Driver ==
 
 Links and information that relate to Windows HID driver:
   * [http://www.lvr.com/forum/index.php?action=printpage;topic=417.0 Samples of some FFB registry entries]
+  * Discussion [http://www.microchip.com/forums/tm.aspx?m=487478&mpage=1&key=&#498305 at Microchip forum about Windows FFB driver registry settings]
 
 == MS Sidewinder Joysticks ==
 
