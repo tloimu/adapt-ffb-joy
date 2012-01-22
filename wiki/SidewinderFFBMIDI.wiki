@@ -1,4 +1,5 @@
 #summary Reverse engineering Sidewinder joystick force feedback protocol
+#labels Featured
 
 =Controlling Force Feedback of Microsoft Sidewinder Force Feedback Pro Joystick=
 	
