@@ -1,0 +1,54 @@
+#summary Initialization procedure of FFB mode for FFP's
+
+= Introduction =
+
+A tester connected to real game port's X1-line prints the following interrupt sequences at enumeration and startup of an FFB application:
+
+(The log below has microsecond offset timestamps at the end after the "+"-sign)
+
+{{{
+1000000000: INTERRUPT from X1 (0)
+1000000012: INTERRUPT from X1 (1) +12 _(this interrupt came 12us after the previous one etc)_
+1000000020: INTERRUPT from X1 (2) +20
+1000000016: INTERRUPT from X1 (3) +16
+1000000016: INTERRUPT from X1 (4) +16
+1000006844: INTERRUPT from X1 (0) +6844
+1000000012: INTERRUPT from X1 (1) +12
+1000000032: INTERRUPT from X1 (0) +32
+1000000012: INTERRUPT from X1 (1) +12
+1000000036: INTERRUPT from X1 (2) +36
+1000000344: INTERRUPT from X1 (3) +344
+1000000016: INTERRUPT from X1 (4) +16
+1000000044: INTERRUPT from X1 (5) +44
+1000000052: INTERRUPT from X1 (6) +52
+1000000308: INTERRUPT from X1 (7) +308
+1000000020: INTERRUPT from X1 (8) +20
+1000000408: INTERRUPT from X1 (9) +408
+1000024512: INTERRUPT from X1 (0) +24512
+1000000008: INTERRUPT from X1 (1) +8
+1000000024: INTERRUPT from X1 (0) +24
+1000000020: INTERRUPT from X1 (1) +20
+1000000020: INTERRUPT from X1 (2) +20
+1000000352: INTERRUPT from X1 (3) +352
+1000000016: INTERRUPT from X1 (4) +16
+1000000016: INTERRUPT from X1 (5) +16
+1000000020: INTERRUPT from X1 (6) +20
+1000000032: INTERRUPT from X1 (7) +32
+1000000364: INTERRUPT from X1 (8) +364
+1000000024: INTERRUPT from X1 (9) +24
+1000003008: INTERRUPT from X1 (0) +3008
+1000000012: INTERRUPT from X1 (1) +12
+1000000024: INTERRUPT from X1 (2) +24
+1000000020: INTERRUPT from X1 (3) +20
+1000000024: INTERRUPT from X1 (4) +24
+1000000020: INTERRUPT from X1 (5) +20
+1000000332: INTERRUPT from X1 (6) +332
+1000000020: INTERRUPT from X1 (7) +20
+1000000024: INTERRUPT from X1 (8) +24
+}}}
+And only then PC sends the MIDI data:
+
+{{{
+c5 01
+...
+}}}
