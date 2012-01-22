@@ -3,9 +3,9 @@
 
 = Introduction =
 
-A tester connected to real game port's X1-line prints the following interrupt sequences at enumeration and startup of an FFB application:
+A tester connected to real game port's X1-line (AVR pin B4) prints the following interrupt sequences at enumeration and startup of an FFB application:
 
-(The log below has microsecond offset timestamps at the end after the "+"-sign - timestamps are in maximum of 4us resolution and may have slight distortion - but this should give the overview)
+(The log below has microsecond offset timestamps at the end after the "+"-sign - timestamps have accuracy of at most 4us and may have slight distortion - but this should give the overview of what happens and that something really happens there)
 
 {{{
 1000000000: INTERRUPT from X1 (0)
@@ -52,4 +52,25 @@ And only then PC sends the MIDI data:
 {{{
 c5 01
 ...
+}}}
+
+Some interrupts are still sent in X1-line after the first MIDI command. Details on those later.
+
+To verify the tester's output, the below is produced when looking at the Y2-line (AVR pin B5) from 3DPVert's startup sequence with FFP:
+
+{{{
+1000000000: INTERRUPT from Y2 (0) 0
+1000000192: INTERRUPT from Y2 (0) +192
+1000000916: INTERRUPT from Y2 (1) +916
+1000000488: INTERRUPT from Y2 (0) +488
+1000004088: INTERRUPT from Y2 (0) +4088
+1000216380: INTERRUPT from Y2 (0) +216380
+1000012340: INTERRUPT from Y2 (0) +12340
+1000000160: INTERRUPT from Y2 (0) +160
+1000008152: INTERRUPT from Y2 (0) +8152
+1001144192: INTERRUPT from Y2 (0) +1144192
+1000004672: INTERRUPT from Y2 (0) +4672
+1000004676: INTERRUPT from Y2 (0) +4676
+1000004676: INTERRUPT from Y2 (0) +4676
+...(repeat forever every 4.676 ms)...
 }}}
