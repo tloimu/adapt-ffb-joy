@@ -1,4 +1,5 @@
 #summary Contains FFB and FFB joystick related links and information
+#labels Featured
 
 = Related Background Information =
 
