@@ -54,7 +54,7 @@ c5 01
 ...
 }}}
 
-Some interrupts are still sent in X1-line after the first MIDI command. Details on those later.
+Some interrupts are still sent in X1-line after and along the very first MIDI commands. But after the startup sequence is completed, issuing effects data happens in MIDI-line alone.
 
 To verify the tester's output, the below is produced when looking at the Y2-line (AVR pin B5) from 3DPVert's startup sequence with FFP:
 
