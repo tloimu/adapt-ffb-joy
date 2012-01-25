@@ -43,6 +43,66 @@ In this sample, the values of buttons, X1 and X2 -lines are also visible. Button
 
 Open FEdit, which enumerates the device, enables FFB and switches off the auto-center-spring effect (see the [http://code.google.com/p/adapt-ffb-joy/wiki/SidewinderFFBMIDI FFB MIDI-protocol description] for more on that). The MIDI data is also printed here.
 
+Some "commands" also include pulsing of X2 in addition to X1. These are longer pulses of about 330..430us. Some commands also return data to PC in button-lines.
+
+Here's some more detailed info about the "enable FFB"-sequence
+{{{
+Command A: (i.e. "Read")
+  X1: pulse 1 time for 230us
+  X2: delay 50us and pulse 420us 
+  Return ~16 clocks of data to PC
+
+(pause 6 ms)
+
+Command B:
+  X1: pulse 4 times (200us intervals) with pulse widths 230, 220, 220 and 290us
+  X2: delay 50us, pulse 2 times (pulse 330us, wait 520us, pulse 400us)
+  Return ~60 clocks of data to PC
+
+(pause 35 ms)
+
+Command C:
+  X1: pulse 3 times (200us intervals) with pulse widths 230, 220 and  290us
+  X2: delay 50us, pulse 2 times (pulse 330us, wait 490us, pulse 420us)
+  No data to PC
+  
+(pause 14 ms)
+
+Command D:
+  X1 for 2 times (200us intervals) with pulse widths 230 and 290us
+  X2: delay 50us and pulse 310us
+  Return ~60 clocks of data to PC
+
+(pause 78 ms)
+
+Command E:
+  X1 for 2 times (200us intervals) with pulse widths 230 and 290us
+  No X2 activity
+  No data to PC
+
+(pause 3.5 ms)
+
+Command F: (like "Command C", but no X2 activity)
+  X1: pulse 3 times (200us intervals) with pulse widths 230, 220 and  290us
+  No X2 activity
+  No data to PC
+
+..Somewhere here, start sending MIDI data starting with 0xC5 0x01...
+
+(pause 59 ms)
+
+Command G: (like "Command E" but returns data)
+  X1 for 2 times (200us intervals) with pulse widths 230 and 290us
+  No X2 activity
+  Return ~28 clocks of data to PC
+
+...complete setup sequence in MIDI...
+}}}
+
+The "Command A" is also repeated as such when a Game Controllers panel is opened and when it polls every 5 seconds the stick to display its status (Connected/Not connected) or when the positional data is read from the stick.
+
+Below is a raw sample of log (not the only one tho) to support the above picture.
+
 How to interpret the log? Lines starting with a large number have a timing information in micro seconds (the time value "1000000000" is added only to get easy formatting directly in AVR).
 
 Lines with "X1 high" or "X1 low" indicate change in X1-line state. The number after "+"-sign is the microseconds since the last X1-change occurred. Value before "+"-sign is offset from beginning of a "command", which is here defined to start if previous X1-changes was longer than 900us ago.
