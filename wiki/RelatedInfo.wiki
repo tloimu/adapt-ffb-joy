@@ -18,7 +18,7 @@ and some projects and discussions:
   * Another discussion at [http://www.microchip.com/forums/m487478-print.aspx Microship's forums]
   * Yet one discussion [http://forums.obdev.at/viewtopic.php?f=8&t=4313 in ObjDev about non-USB AVRs and FFB HID]
 
-== Windows HID Driver ==
+== Windows USB HID Driver ==
 
 Links and information that relate to Windows HID driver:
   * [http://www.lvr.com/forum/index.php?action=printpage;topic=417.0 Samples of some FFB registry entries]
@@ -31,3 +31,10 @@ Links to information about Microsoft Sidewinder joystics (with and without FFB):
   * Discussion about [http://www.descentbb.net/viewtopic.php?f=8&t=19061 force feedback adaptation at tech forums in DescentBB] about this kind of projects
   * Discussion thread at [http://answers.microsoft.com/en-us/windows/forum/windows_other-hardware/midi-force-feedback-protocol/2d1f18cc-c47c-e011-9b4b-68b599b31bf5?msgId=c867a34b-397d-e011-9b4b-68b599b31bf5 Microsoft Answers] about the topic
   * Source code of [http://www.cs.fsu.edu/~baker/devices/lxr/http/source/linux/drivers/input/joystick/sidewinder.c Sidewinder support in Linux kernel as in sidewinder.c]
+  * [http://www.epanorama.net/documents/joystick/pc_joystick.html Article on analog joystick interface] on game port
+
+== Tools for Force Feedback in Windows ==
+
+  * [http://www.microsoft.com/downloads/en/confirmation.aspx?FamilyId=FD044A42-9912-42A3-9A9E-D857199F888E&displaylang=en Microsoft DirectX 9.0 SDK that has FEdit tool]. This is the latest SDK that still contains FEdit-tool - it has been removed from later SDKs. Use this tool to create and play FFB effects on FFB devices
+  * [http://members.shaw.ca/bokinator/ Copy of FFB tools] in file ffbStuff.zip. The zip-file contains applications (including FEdit) that create and play FFB effects on FFB devices. Disclaimer: Since this stuff is not from the original manufacturer, please check for viruses, malware, licenses etc. yourself before using!
+  * [http://www.microchip.com/forums/m320225-p3-print.aspx Discussion about FFB tools for Windows] in Microchip's forum
