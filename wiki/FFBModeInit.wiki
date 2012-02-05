@@ -1,9 +1,79 @@
 #summary Initialization procedure of FFB mode for FFP's
 #labels Featured
 
-= Introduction =
+= Enable FFB =
 
-An AVR based tester connected to real game port's X1-line (in 3DPVert this would go to pin B4 on Tweeny 2.0) prints the below interrupt sequences at enumeration and startup of an FFB application. The X1-line is connected to tester's D0 (to get interrupts on changes) with a serial 330k resistor. Using no resistor produced quite erratic results probably due the AVRs interference in the process.
+The below procedure enables the FFB mode in the joystick. It also disables the auto-center spring effect.
+
+It is sufficient to send pulses to X1-line. A single pulse has a form of 50us high and 150us low. A single "command" is composed of one or more pulses in series. Between commands, there is usually a pause of several milliseconds.
+
+{{{
+1 pulse
+    (wait 7 ms)
+4 pulses
+    (wait 24-41 ms)
+3 pulses
+    (wait 15 ms)
+2 pulses
+    (wait 78 ms)
+2 pulses
+    (wait 4 ms)
+3 pulses
+    (wait 59 ms)
+2 pulses
+}}}
+
+I.e. omitting the timings, the command sequence would be "1-4-3-2-2-3-2".
+
+The first MIDI bytes "0xC5 0x01..." can be sent immediately after all of the above sequence pulse commands have been completed. The full MIDI data is as follows:
+
+{{{
+0xc5, 0x01        // <ProgramChange> 0x01
+    (wait for 20 ms)
+0xf0,
+0x00, 0x01, 0x0a, 0x01, 0x10, 0x05, 0x6b,
+0xf7
+    (wait for 56 ms)
+0xb5, 0x40, 0x7f,  // <ControlChange>(Modify, 0x7f)
+0xa5, 0x72, 0x57,  // offset 0x72 := 0x57
+0xb5, 0x44, 0x7f,  // ...
+0xa5, 0x3c, 0x43,
+0xb5, 0x48, 0x7f,
+0xa5, 0x7e, 0x00,
+0xb5, 0x4c, 0x7f,
+0xa5, 0x04, 0x00,
+0xb5, 0x50, 0x7f,
+0xa5, 0x02, 0x00,
+0xb5, 0x54, 0x7f,
+0xa5, 0x02, 0x00,
+0xb5, 0x58, 0x7f,
+0xa5, 0x00, 0x7e,
+0xb5, 0x5c, 0x7f,
+0xa5, 0x3c, 0x00,
+0xb5, 0x60, 0x7f,
+0xa5, 0x14, 0x65,
+0xb5, 0x64, 0x7f,
+0xa5, 0x7e, 0x6b,
+0xb5, 0x68, 0x7f,
+0xa5, 0x36, 0x00,
+0xb5, 0x6c, 0x7f,
+0xa5, 0x28, 0x00,
+0xb5, 0x70, 0x7f,
+0xa5, 0x66, 0x4c,
+0xb5, 0x74, 0x7f,
+0xa5, 0x7e, 0x01,
+0xc5, 0x01        // <ProgramChange> 0x01
+    (wait for 69 ms)
+0xb5, 0x7c, 0x7f,
+0xa5, 0x7f, 0x00,
+0xc5, 0x06        // <ProgramChange> 0x06
+}}}
+
+The joystick also sends an acknowledgement of the mode switch to the PC. If there is a problem in a sequence, Windows will notify that it cannot find a force feedback device and the above commands are not carried thru, but end only as e.g. sequence "1-4-3-2". The acknowledgement is signaled using the button-lines.
+
+= Old Background Information =
+
+An AVR based tester connected to real game port's X1-line (in 3DPVert this would go to pin B4 on Teensy 2.0) prints the below interrupt sequences at enumeration and startup of an FFB application. The X1-line is connected to tester's D0 (to get interrupts on changes) with a serial 330k resistor. Using no resistor produced quite erratic results probably due the AVRs interference in the process.
 
 The tester can clock up to 4us accuracy but additional distortion is always possible since it is based on Arduino code, which doesn't give you all the control easily.
 
