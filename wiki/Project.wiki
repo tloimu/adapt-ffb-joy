@@ -5,32 +5,13 @@
 
 This page contains the project's plan and status. It lists what is still missing.
 
+== What works ==
+
+Now, an version of 3DP-Vert exist that works as a proof of concept for controlling force feedback on the Sidewinder FFP joystick. It can enable "FFB mode" on the joystick. It also allows starting a constant force effect (to left) and to stopping it by pressing joystick buttons. To free the UART TX-pin for sending the MIDI data to the joystick 3DP-Vert's button pins were moved to B0..B3 pins in the AVR.
 
 == To Do ==
 
 Things still to do.
-
-=== How to Enable Sidewinder Force Feedback Pro's FFB Mode ===
-
-It is still unknown how to consistently enable FFP to accept the MIDI data for FFB effects and control.
-
-From the forums of DescentBB posts of "cal":
-
-	_I cut the MIDI-wire on the joystick and took both end out of it, so that I can have the stick on actual game port and still have full control on the MIDI-line to the stick with a Teensy.
-	I can now consistently control the effects on the joystick with a Teensy. There seemed to be some timing related issues i.e. that after certain commands, the joystick needs to be given a bit time to process them. I can start and stop a few pre-recorded effects and disable and enable the auto-center spring effect on the stick.
-	The problem still is that I need to get the stick "in the mood" to get my MIDI-commands. With the 3DPVert, the stick is NOT "in the mood". Actually, the stick is not "on the mood" by default even when it is connected to a real game port.
-	When connected to a real game port, opening FEdit in XP seems to do the trick. After that I can send commands and the joystick replies as expected. If I issue a command to re-enable the default auto-center spring effect as of going "out of application scope" I have to restart FEdit to put the stick back to the "mood" to receive commands.
-	The funny thing is that FEdit (or any application using FFB) can put the stick to the mood even if the MIDI-wire is completely disconnected. Which means, that the game port is talking to the stick also on FFB-related matters (at least this "mood switch") using the conventional pins instead of MIDI._
-
-...and...
-
-	_It is not all MIDI. The stick consistently goes into some "FFB mode" even when I have MIDI pin disconnected between the stick and game port when I startup FEdit. And only after that I can feed it the MIDI data so that the stick actually executes the given effects.
-
-	I even shorted the MIDI pin from the game port to ground (with a small resistor for safety) to prevent any crosstalk. And thus, I'm quite confident that the stick is not getting anything thru to the stick's MIDI input from game port and it still switches its mode. There is even a slight, but immediate and recognizable change in how the stick's auto-center-spring behaves right after starting FEdit (which also notices that it was not able to disable the auto-center-spring - as if game port would somehow also get feedback of the mode switch).
-
-	I don't have a scope. So, if anyone with one could see what's happening in the axis/button pins at the moment of an FFB-using application starts up and sets the stick to the "FFB mode"._
-
-
 
 === USB HID Descriptor ==
 
