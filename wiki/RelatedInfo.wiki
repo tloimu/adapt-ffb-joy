@@ -23,6 +23,7 @@ and some projects and discussions:
 Links and information that relate to Windows HID driver:
   * [http://www.lvr.com/forum/index.php?action=printpage;topic=417.0 Samples of some FFB registry entries]
   * Discussion [http://www.microchip.com/forums/tm.aspx?m=487478&mpage=1&key=&#498305 at Microchip forum about Windows FFB driver registry settings]
+  * Microsoft docs on [http://msdn.microsoft.com/en-us/library/ff542434(VS.85).aspx OEMForceFeedback registry settings]
 
 == MS Sidewinder Joysticks ==
 
