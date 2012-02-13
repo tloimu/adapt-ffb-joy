@@ -1,4 +1,5 @@
 #summary HID descriptions for joystick with force feedback
+#labels Featured,Phase-Design
 
 = Introduction =
 
