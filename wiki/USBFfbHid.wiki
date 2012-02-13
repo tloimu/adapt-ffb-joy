@@ -1,0 +1,1111 @@
+#summary HID descriptions for joystick with force feedback
+
+= Introduction =
+
+Version: 1 (13.2.2012)
+
+Here is the current status of the HID descriptors for PID device. It is a simple joystick that supports some force feedback effects.
+
+This sample does not work properly yet. It enumerates and joystick part works. But is not automatically recognized as force feedback device without manual steps of modifying some registry settings (see details below).
+
+*The burning questions* are now:
+  * What should device respond to host in order to properly ACK the *Set Constant Force* report? Would it be easier to use device managed memory model instead?
+  * Why doesn't Windows see the device immediately as FFB device? Why is modifying the registry needed? What's missing from the HID descriptor or is it something that happens in the PID protocol - device only gets the _reset_ command when FEdit is launched. Should the device respond to it somehow?
+
+= Details =
+
+This is tested in a Teensy 2 (ATmega32U4) with WinAVR-20100110 (you need this or newer version) and LUFA-120219-BETA (need this or newer version too).
+
+To run the device and allow FEDit to recognize it as device
+  # Check that registry key *HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\MediaProperties\PrivateProperties\Joystick\OEM\VID_03EB&PID_2043* does *not* exist - delete it if it does
+  # Plug-in the device => gets recognized as a joystick
+  # Open FEdit (or another FFB application) - you will get an error of not finding any FFB device - continue with the below
+  # Close the FEdit (or the other application)
+  # Open registy value *HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\MediaProperties\PrivateProperties\Joystick\OEM\VID_03EB&PID_2043\OEMForceFeedback\Effects\{13541C20-8E33-11D0-9AD0-00A0C9A06E35}* and modify its value named *Attributes* to binary value hex:26,00,0f,00,01,06,00,00,fd,01,00,00,fd,01,00,00,*30*,00,00,00 (i.e. change the fourth last byte from 0x00 to 0x30 - this is enabling effects to the joystick axis)
+  # Open FEdit (or another FFB application) again and the device is recognized as FFB device and you can play effects to it
+
+The effects are sent to device, but the device apparently does not acknowledge it correctly (it attempts to use PID Status report) and playing the effect fails. Debug wire (UART TX) will show the data being received and set as:
+
+Open FEdit:
+{{{
+Received OUT:
+ 0b 01  # Report ID 0xOB (Device Control) type 0x01 (OUT)
+ 08     # DC Reset 
+}}}
+
+Play a constant force effect:
+
+{{{
+Sending IN:
+ 02 00  # Device responds with PID Status on
+ 7f 0e  # effect ID 0x7F (all) and status 0x0E (actuators enabled, effect not playing)
+Received OUT:
+ 05 01     # Report ID 0x05 (Set Constant Force Report)
+ ff 7f 7e  # effect id 0x7FFF (-1?) magnitude 0x7E (max value)
+Sending IN:
+ 02 00  # Device responds with PID Status on
+ 01 0e  # effect ID 0x01 and status 0x0E (actuators enabled,  effect no playing - tried other statuses here too but no change)
+
+# Apparently here the host cancels the playing for not getting
+# a proper ACK (or something) from the device since no more effect
+# related parameters are sent:
+
+Received OUT:          
+ 0a 01     # Report ID 0x0A (Effect Operation)
+ 01 01 00  # Effect ID 0x01 operation 0x01 (Stop)
+Sending IN:
+ 02 00     # PID Status...
+ 01 0f
+}}}
+
+Exit FEdit:
+
+{{{
+Received OUT:
+ 0b 01
+ 08        # Device Control Reset
+Sending IN:
+ 02 00     # ...
+ 7f 0e
+}}}
+
+The device sends the above debugging data (without the comments of course) to UART TX pin in a format that allows string and binary data dumps:
+  * Strings start with byte value "0" and end to a terminating NULL
+  * Binary data block starts with non-zero byte that indicates how many bytes of binary data is included in the following bytes
+  * All sent and received reports data is printed except INPUT Report ID 1 i.e. the joystick position report (because it is very verbose and content is trivial and non-interesting in terms of FFB)
+
+
+= Descriptors and Code=
+
+Here are the descriptors and code. Code is based on LUFA's joystick class device sample and USB.org's HID PID descriptor with minor modifications as to adhere to Microsoft recommendations (e.g. position axis logical and physical minimums and maximums should not be negative).
+
+=== Makefile ===
+
+The sample's makefile needs a couple of changes to enable support for large HIDs required by FFB. See that the compiler options are:
+
+{{{
+# Place -D or -U options here for C sources
+CDEFS  = -DF_CPU=$(F_CPU)UL
+CDEFS += -DF_USB=$(F_USB)UL
+# Start of changes -->
+CDEFS += -DHID_USAGE_STACK_DEPTH=16
+CDEFS += -DHID_MAX_COLLECTIONS=35
+CDEFS += -DHID_MAX_REPORT_IDS=20
+CDEFS += -DHID_MAX_REPORTITEMS=35
+# <-- End of changes
+CDEFS += -DBOARD=BOARD_$(BOARD) -DARCH=ARCH_$(ARCH)
+CDEFS += $(LUFA_OPTS)
+}}}
+
+and that 16MHz clock speed is selected.
+
+=== Device and HID Descriptors ===
+
+{{{
+/*
+             LUFA Library
+     Copyright (C) Dean Camera, 2012.
+
+  dean [at] fourwalledcubicle [dot] com
+           www.lufa-lib.org
+*/
+
+/*
+  Copyright 2012  Dean Camera (dean [at] fourwalledcubicle [dot] com)
+
+  Permission to use, copy, modify, distribute, and sell this
+  software and its documentation for any purpose is hereby granted
+  without fee, provided that the above copyright notice appear in
+  all copies and that both that the copyright notice and this
+  permission notice and warranty disclaimer appear in supporting
+  documentation, and that the name of the author not be used in
+  advertising or publicity pertaining to distribution of the
+  software without specific, written prior permission.
+
+  The author disclaim all warranties with regard to this
+  software, including all implied warranties of merchantability
+  and fitness.  In no event shall the author be liable for any
+  special, indirect or consequential damages or any damages
+  whatsoever resulting from loss of use, data or profits, whether
+  in an action of contract, negligence or other tortious action,
+  arising out of or in connection with the use or performance of
+  this software.
+*/
+
+/** \file
+ *
+ *  USB Device Descriptors, for library use when in USB device mode. Descriptors are special
+ *  computer-readable structures which the host requests upon device enumeration, to determine
+ *  the device's capabilities and functions.
+ */
+
+#include "Descriptors.h"
+
+/** HID class report descriptor. This is a special descriptor constructed with values from the
+ *  USBIF HID class specification to describe the reports and capabilities of the HID device. This
+ *  descriptor is parsed by the host and its contents used to determine what data (and in what encoding)
+ *  the device will send, and what it may be sent back from the host. Refer to the HID specification for
+ *  more details on HID report descriptors.
+ */
+const USB_Descriptor_HIDReport_Datatype_t PROGMEM JoystickReport[] =
+{
+
+	HID_RI_USAGE_PAGE(8, 0x01), /* Generic Desktop */
+	HID_RI_USAGE(8, 0x04), /* Joystick */
+	HID_RI_COLLECTION(8, 0x01), /* Application */
+		0x85, 0x01, // ( REPORT_ID ( 1))
+
+	    HID_RI_USAGE(8, 0x01), /* Pointer */
+	    HID_RI_COLLECTION(8, 0x00), /* Physical */
+	        HID_RI_USAGE(8, 0x30), /* Usage X */
+	        HID_RI_USAGE(8, 0x31), /* Usage Y */
+	        HID_RI_LOGICAL_MINIMUM(8, 0),
+	        HID_RI_LOGICAL_MAXIMUM(8, 255),
+	        HID_RI_PHYSICAL_MINIMUM(8, 0),
+	        HID_RI_PHYSICAL_MAXIMUM(8, 255),
+	        HID_RI_REPORT_COUNT(8, 0x02),
+	        HID_RI_REPORT_SIZE(8, 0x08),
+	        HID_RI_INPUT(8, HID_IOF_DATA | HID_IOF_VARIABLE | HID_IOF_ABSOLUTE),
+	    HID_RI_END_COLLECTION(0),
+
+	    HID_RI_USAGE_PAGE(8, 0x09),
+	    HID_RI_USAGE_MINIMUM(8, 0x01),
+	    HID_RI_USAGE_MAXIMUM(8, 0x08),
+	    HID_RI_LOGICAL_MINIMUM(8, 0x00),
+	    HID_RI_LOGICAL_MAXIMUM(8, 0x01),
+	    HID_RI_REPORT_SIZE(8, 0x01),
+	    HID_RI_REPORT_COUNT(8, 0x08),
+	    HID_RI_INPUT(8, HID_IOF_DATA | HID_IOF_VARIABLE | HID_IOF_ABSOLUTE),
+
+	// ----------------------------------------
+	// Start F0xor0xce, 0xFe,edback command definitions
+	
+	0x05, 0x0F, // ( USAGE_PAGE ( Physical Interface))
+	
+	// Effect Report Definition
+	0x09, 0x21, // ( USAGE ( Set Effect Report))
+		0xA1, 0x02, // ( COLLECTION ( Logical))
+		0x09, 0x22, // ( USAGE ( Effect Block Index))
+		0x25, 0x7F, // ( LOGICAL_MAXIMUM ( 127))
+		0x75, 0x07, // ( REPORT_SIZE ( 7))
+		0x95, 0x01, // ( REPORT_COUNT ( 1))
+		0x91, 0x02, // ( OUTPUT ( Data,Var,Abs))
+		0x09, 0x24, // ( USAGE ( ROM Flag))
+		0x25, 0x01, // ( LOGICAL_MAXIMUM ( 1))
+		0x75, 0x01, // ( REPORT_SIZE ( 1))
+		0x91, 0x02, // ( OUTPUT ( Data,Var,Abs))
+
+		// Define the available effect types. Effect Type is a named array that will
+		//  accept any of the ET usages listed.
+		0x09, 0x25, // ( USAGE ( Effect Type))
+			0xA1, 0x02, // ( COLLECTION ( Logical))
+			0x09, 0x26, // ( USAGE ( ET Constant Force))
+			0x09, 0x27, // ( USAGE ( ET Ramp))
+			0x09, 0x30, // ( USAGE ( ET Square))
+			0x09, 0x31, // ( USAGE ( ET Sine))
+			0x09, 0x32, // ( USAGE ( ET Triangle))
+			0x09, 0x33, // ( USAGE ( ET Sawtooth Up))
+			0x09, 0x34, // ( USAGE ( ET Sawtooth Down))
+			0x09, 0x40, // ( USAGE ( ET Spring))
+			0x09, 0x41, // ( USAGE ( ET Damper))
+			0x09, 0x42, // ( USAGE ( ET Inertia))
+			0x15, 0x01, // ( LOGICAL_MINIMUM ( 1))
+			0x25, 0x0A, // ( LOGICAL_MAXIMUM ( 10))
+			0x75, 0x08, // ( REPORT_SIZE ( 8))
+			0x91, 0x00, // ( OUTPUT ( Data,Ary,Abs))
+			0xC0, // ( END_COLLECTION)
+
+		0x09, 0x50, // ( USAGE ( Duration))
+		0x09, 0x54, // ( USAGE ( Trigger Repeat Interval))
+		0x15, 0x00, // ( LOGICAL_MINIMUM ( 0))
+		0x26, 0x10, 0x27, // ( LOGICAL_MAXIMUM ( 10000) 26)
+		0x46, 0x10, 0x27, // ( PHYSICAL_MAXIMUM ( 10000) 46)
+		0x75, 0x10, // ( REPORT_SIZE ( 16))
+		0x66, 0x03, 0x10, // ( UNIT ( Eng Lin:Time) 66)
+		0x55, 0x0D, // ( UNIT_EXPONENT ( -3))
+		0x95, 0x02, // ( REPORT_COUNT ( 2))
+		0x91, 0x02, // ( OUTPUT ( Data,Var,Abs))
+
+		0x55, 0x0A, // ( UNIT_EXPONENT ( -6))
+		0x09, 0x51, // ( USAGE ( Sample Period))
+		0x95, 0x01, // ( REPORT_COUNT ( 1))
+		0x91, 0x02, // ( OUTPUT ( Data,Var,Abs))
+		0x45, 0x00, // ( PHYSICAL_MAXIMUM ( 0))
+		0x55, 0x00, // ( UNIT_EXPONENT ( 0))
+		0x65, 0x00, // ( UNIT ( None))
+
+		0x09, 0x52, // ( USAGE ( Gain))
+		0x09, 0x53, // ( USAGE ( Trigger Button))
+		0x25, 0x7F, // ( LOGICAL_MAXIMUM ( 127))
+		0x75, 0x08, // ( REPORT_SIZE ( 8))
+		0x95, 0x02, // ( REPORT_COUNT ( 2))
+		0x91, 0x02, // ( OUTPUT ( Data,Var,Abs))
+
+		0x09, 0x55, // ( USAGE ( Axes Enable)    //  Tie these axes to the stick)
+			0xA1, 0x02, // ( COLLECTION ( Logical))
+			0x05, 0x01, // ( USAGE_PAGE ( Generic Desktop))
+			0x09, 0x01, // ( USAGE ( Pointer))
+				0xA1, 0x00, // ( COLLECTION ( Physical))
+				0x09, 0x30, // ( USAGE ( X))
+				0x09, 0x31, // ( USAGE ( Y))
+				0x25, 0x01, // ( LOGICAL_MAXIMUM ( 1))
+				0x75, 0x01, // ( REPORT_SIZE ( 1))
+				0x95, 0x02, // ( REPORT_COUNT ( 2))
+				0x91, 0x02, // ( OUTPUT ( Data,Var,Abs))
+				0xC0, // ( END_COLLECTION)
+			0xC0, // ( END_COLLECTION)
+		
+		0x95, 0x06, // ( REPORT_COUNT ( 6)     //  6-bit pad)
+		0x91, 0x03, // ( OUTPUT ( Cnst,Var,Abs))
+
+		0x05, 0x0F, // ( USAGE_PAGE ( Physical Interface))
+		0x09, 0x57, // ( USAGE ( Direction))
+			0xA1, 0x02, // ( COLLECTION ( Logical))
+			0x05, 0x01, // ( USAGE_PAGE ( Generic Desktop))
+			0x09, 0x01, // ( USAGE ( Pointer)     //  Tie these axes to the stick)
+				0xA1, 0x00, // ( COLLECTION ( Physical))
+				0x09, 0x30, // ( USAGE ( X))
+				0x09, 0x31, // ( USAGE ( Y))
+				0x15, 0x00, // ( LOGICAL_MINIMUM ( 0))
+				0x26, 0xFF, 0x00, // ( LOGICAL_MAXIMUM ( 255) 26)
+				0x46, 0x68, 0x01, // ( PHYSICAL_MAXIMUM ( 360) 46)
+				0x66, 0x14, 0x00, // ( UNIT ( Eng Rot:Angular Pos) 66)
+				0x75, 0x08, // ( REPORT_SIZE ( 8))
+				0x95, 0x02, // ( REPORT_COUNT ( 2))
+				0x91, 0x02, // ( OUTPUT ( Data,Var,Abs))
+				0x65, 0x00, // ( UNIT ( None))
+				0x45, 0x00, // ( PHYSICAL_MAXIMUM ( 0))
+				0xC0, // ( END_COLLECTION)
+			0xC0, // ( END_COLLECTION)
+
+		0x05, 0x0F, // ( USAGE_PAGE ( Physical Interface))
+		0x09, 0x58, // ( USAGE ( Type Specific Block Offset))
+			0xA1, 0x02, // ( COLLECTION ( Logical))
+			0x0B, 0x01, 0x00, 0x0A, 0x00, // ( USAGE ( Ordinals:Instance 1) 0x0B, 0x01, 00)
+			0x0B, 0x02, 0x00, 0x0A, 0x00, // ( USAGE ( Ordinals:Instance 2) 0x0B, 0x02, 00)
+			0x26, 0xFD, 0x7F, // ( LOGICAL_MAXIMUM ( 32765) //  32K RAM or ROM max. 26)
+			0x75, 0x10, // ( REPORT_SIZE ( 16))
+			0x95, 0x02, // ( REPORT_COUNT ( 2))
+			0x91, 0x02, // ( OUTPUT ( Data,Var,Abs))
+			0xC0, // ( END_COLLECTION)
+		0xC0, // ( END_COLLECTION)
+
+		// Envelope Report Definition
+	0x09, 0x5A, // ( USAGE ( Set Envelope Report))
+		0xA1, 0x02, // ( COLLECTION ( Logical))
+		0x85, 0x02, // ( REPORT_ID ( 2))
+		0x09, 0x23, // ( USAGE ( Parameter Block Offset))
+		0x26, 0xFD, 0x7F, // ( LOGICAL_MAXIMUM ( 32765) //  32K RAM or ROM max 26)
+		0x75, 0x0F, // ( REPORT_SIZE ( 15))
+		0x95, 0x01, // ( REPORT_COUNT ( 1))
+		0x91, 0x02, // ( OUTPUT ( Data,Var,Abs))
+
+		0x09, 0x24, // ( USAGE ( ROM Flag))
+		0x25, 0x01, // ( LOGICAL_MAXIMUM ( 1))
+		0x75, 0x01, // ( REPORT_SIZE ( 1))
+		0x91, 0x02, // ( OUTPUT ( Data,Var,Abs))
+
+		0x09, 0x5B, // ( USAGE ( Attack Level))
+		0x09, 0x5D, // ( USAGE ( Fade Level))
+		0x26, 0xFF, 0x00, // ( LOGICAL_MAXIMUM ( 255) 26)
+		0x75, 0x08, // ( REPORT_SIZE ( 8))
+		0x95, 0x02, // ( REPORT_COUNT ( 2))
+		0x91, 0x02, // ( OUTPUT ( Data,Var,Abs))
+
+		0x09, 0x5C, // ( USAGE ( Attack Time))
+		0x09, 0x5E, // ( USAGE ( Fade Time))
+		0x26, 0x10, 0x27, // ( LOGICAL_MAXIMUM ( 10000) 26)
+		0x46, 0x10, 0x27, // ( PHYSICAL_MAXIMUM ( 10000) 46)
+		0x66, 0x03, 0x10, // ( UNIT ( Eng Lin:Time) 66)
+		0x55, 0x0D, // ( UNIT_EXPONENT ( -3))
+		0x75, 0x10, // ( REPORT_SIZE ( 16))
+		0x91, 0x02, // ( OUTPUT ( Data,Var,Abs))
+		0x45, 0x00, // ( PHYSICAL_MAXIMUM ( 0))
+		0x65, 0x00, // ( UNIT ( None))
+		0x55, 0x00, // ( UNIT_EXPONENT ( 0))
+		0xC0, // ( END_COLLECTION)
+
+	// Condition  Report Definition
+	0x09, 0x5F, // ( USAGE ( Set Condition Report))
+		0xA1, 0x02, // ( COLLECTION ( Logical))
+		0x85, 0x03, // ( REPORT_ID ( 3))
+		0x09, 0x23, // ( USAGE ( Parameter Block Offset))
+		0x26, 0xFD, 0x7F, // ( LOGICAL_MAXIMUM ( 32765) 26)
+		0x75, 0x0F, // ( REPORT_SIZE ( 15))
+		0x95, 0x01, // ( REPORT_COUNT ( 1))
+		0x91, 0x02, // ( OUTPUT ( Data,Var,Abs))
+
+		0x09, 0x24, // ( USAGE ( ROM Flag))
+		0x25, 0x01, // ( LOGICAL_MAXIMUM ( 1))
+		0x75, 0x01, // ( REPORT_SIZE ( 1))
+		0x91, 0x02, // ( OUTPUT ( Data,Var,Abs))
+
+		0x09, 0x60, // ( USAGE ( CP Offset))
+		0x09, 0x61, // ( USAGE ( Positive Coefficient))
+		0x09, 0x62, // ( USAGE ( Negative Coefficient))
+		0x09, 0x63, // ( USAGE ( Positive Saturation))
+		0x09, 0x64, // ( USAGE ( Negative Saturation))
+		0x09, 0x65, // ( USAGE ( De0xad, 0xBa,nd))
+		0x26, 0xFF, 0x00, // ( LOGICAL_MAXIMUM ( 255) 26)
+		0x75, 0x08, // ( REPORT_SIZE ( 8))
+		0x95, 0x06, // ( REPORT_COUNT ( 6))
+		0x91, 0x02, // ( OUTPUT ( Data,Var,Abs))
+		0xC0, // ( END_COLLECTION)
+
+	// Periodic Report Definition
+	0x09, 0x6E, // ( USAGE ( Set Periodic Report))
+		0xA1, 0x02, // ( COLLECTION ( Logical))
+		0x85, 0x04, // ( REPORT_ID ( 4))
+		0x09, 0x23, // ( USAGE ( Parameter Block Offset))
+		0x26, 0xFD, 0x7F, // ( LOGICAL_MAXIMUM ( 32765) 26)
+		0x75, 0x0F, // ( REPORT_SIZE ( 15))
+		0x95, 0x01, // ( REPORT_COUNT ( 1))
+		0x91, 0x02, // ( OUTPUT ( Data,Var,Abs))
+
+		0x09, 0x24, // ( USAGE ( ROM Flag))
+		0x25, 0x01, // ( LOGICAL_MAXIMUM ( 1))
+		0x75, 0x01, // ( REPORT_SIZE ( 1))
+		0x91, 0x02, // ( OUTPUT ( Data,Var,Abs))
+
+		0x09, 0x70, // ( USAGE ( Magnitude))
+		0x09, 0x6F, // ( USAGE ( Offset))
+		0x09, 0x71, // ( USAGE ( Phase))
+		0x26, 0xFF, 0x00, // ( LOGICAL_MAXIMUM ( 255) 26)
+		0x75, 0x08, // ( REPORT_SIZE ( 8))
+		0x95, 0x03, // ( REPORT_COUNT ( 3))
+		0x91, 0x02, // ( OUTPUT ( Data,Var,Abs))
+
+		0x09, 0x72, // ( USAGE ( Period))
+		0x26, 0x10, 0x27, // ( LOGICAL_MAXIMUM ( 10000) 26)
+		0x46, 0x10, 0x27, // ( PHYSICAL_MAXIMUM ( 10000) 46)
+		0x66, 0x03, 0x10, // ( UNIT ( Eng Lin:Time) 66)
+		0x55, 0x0D, // ( UNIT_EXPONENT ( -3))
+		0x75, 0x10, // ( REPORT_SIZE ( 16))
+		0x95, 0x01, // ( REPORT_COUNT ( 1))
+		0x91, 0x02, // ( OUTPUT ( Data,Var,Abs))
+		0x45, 0x00, // ( PHYSICAL_MAXIMUM ( 0))
+		0x65, 0x00, // ( UNIT ( None))
+		0x55, 0x00, // ( UNIT_EXPONENT ( 0))
+		0xC0, // ( END_COLLECTION)
+
+	// Constant Force Report Definition
+	0x09, 0x73, // ( USAGE ( Set Constant Force Report))
+		0xA1, 0x02, // ( COLLECTION ( Logical))
+		0x85, 0x05, // ( REPORT_ID ( 5))
+		0x09, 0x23, // ( USAGE ( Parameter Block Offset))
+		0x26, 0xFD, 0x7F, // ( LOGICAL_MAXIMUM ( 32765) 26)
+		0x75, 0x0F, // ( REPORT_SIZE ( 15))
+		0x95, 0x01, // ( REPORT_COUNT ( 1))
+		0x91, 0x02, // ( OUTPUT ( Data,Var,Abs))
+
+		0x09, 0x24, // ( USAGE ( ROM Flag))
+		0x25, 0x01, // ( LOGICAL_MAXIMUM ( 1))
+		0x75, 0x01, // ( REPORT_SIZE ( 1))
+		0x91, 0x02, // ( OUTPUT ( Data,Var,Abs))
+
+		0x09, 0x70, // ( USAGE ( Magnitude))
+		0x26, 0xFF, 0x00, // ( LOGICAL_MAXIMUM ( 255) 26)
+		0x75, 0x08, // ( REPORT_SIZE ( 8))
+		0x91, 0x02, // ( OUTPUT ( Data,Var,Abs))
+		0xC0, // ( END_COLLECTION)
+
+	// Ramp Force Report Definition
+	0x09, 0x74, // ( USAGE ( Set Ramp Force Report))
+		0xA1, 0x02, // ( COLLECTION ( Logical))
+		0x85, 0x06, // ( REPORT_ID ( 6))
+		0x09, 0x23, // ( USAGE ( Parameter Block Offset))
+		0x26, 0xFD, 0x7F, // ( LOGICAL_MAXIMUM ( 32765) 26)
+		0x75, 0x0F, // ( REPORT_SIZE ( 15))
+		0x95, 0x01, // ( REPORT_COUNT ( 1))
+		0x91, 0x02, // ( OUTPUT ( Data,Var,Abs))
+		0x09, 0x24, // ( USAGE ( ROM Flag))
+		0x25, 0x01, // ( LOGICAL_MAXIMUM ( 1))
+		0x75, 0x01, // ( REPORT_SIZE ( 1))
+		0x91, 0x02, // ( OUTPUT ( Data,Var,Abs))
+		0x09, 0x75, // ( USAGE ( Ramp Start))
+		0x09, 0x76, // ( USAGE ( Ramp End))
+		0x26, 0xFF, 0x00, // ( LOGICAL_MAXIMUM ( 255) 26)
+		0x75, 0x08, // ( REPORT_SIZE ( 8))
+		0x95, 0x02, // ( REPORT_COUNT ( 2))
+		0x91, 0x02, // ( OUTPUT ( Data,Var,Abs))
+		0xC0, // ( END_COLLECTION)
+
+	// Custom For0xce, 0xDa,ta Report Definition
+	//  Downloads are always into RAM space so the ROM usage is not declared.
+	0x09, 0x68, // ( USAGE ( Custom For0xce, 0xDa,ta Report))
+		0xA1, 0x02, // ( COLLECTION ( Logical))
+		0x85, 0x07, // ( REPORT_ID ( 7))
+		0x09, 0x23, // ( USAGE ( Parameter Block Offset))
+		0x26, 0xFD, 0x7F, // ( LOGICAL_MAXIMUM ( 32765) 26)
+		0x75, 0x0F, // ( REPORT_SIZE ( 15))
+		0x95, 0x01, // ( REPORT_COUNT ( 1))
+		0x91, 0x02, // ( OUTPUT ( Data,Var,Abs))
+		0x0B, 0x3B, 0x00, 0x01, 0x00, // ( USAGE ( Generic Desktop:Byte Count) 0x0B, 0x3B, 00)
+		0x26, 0x00, 0x01, // ( LOGICAL_MAXIMUM ( 256) 26)
+		0x75, 0x09, // ( REPORT_SIZE ( 9))
+		0x91, 0x02, // ( OUTPUT ( Data,Var,Abs))
+		0x09, 0x69, // ( USAGE ( Custom For0xce, 0xDa,ta))
+		0x26, 0xFF, 0x00, // ( LOGICAL_MAXIMUM ( 255) 26)
+		0x75, 0x08, // ( REPORT_SIZE ( 8))
+		0x96, 0x00, 0x01, // ( REPORT_COUNT ( 256) 96)
+		0x92, 0x02, 0x01, // ( OUTPUT ( Data,Var,Abs,Buf) 92)
+		0xC0, // ( END_COLLECTION)
+
+	// Download Force Sample Definition
+	0x09, 0x66, // ( USAGE ( Download Force Sample))
+		0xA1, 0x02, // ( COLLECTION ( Logical))
+		0x85, 0x08, // ( REPORT_ID ( 8))
+		0x05, 0x01, // ( USAGE_PAGE ( Generic Desktop))
+		0x09, 0x01, // ( USAGE ( Pointer))
+			0xA1, 0x02, // ( COLLECTION ( Logical))
+			0x09, 0x30, // ( USAGE ( X))
+			0x09, 0x31, // ( USAGE ( Y))
+			0x15, 0x81, // ( LOGICAL_MINIMUM ( -127))
+			0x25, 0x7F, // ( LOGICAL_MAXIMUM ( 127))
+			0x75, 0x08, // ( REPORT_SIZE ( 8))
+			0x95, 0x02, // ( REPORT_COUNT ( 2))
+			0x91, 0x02, // ( OUTPUT ( Data,Var,Abs))
+			0xC0, // ( END_COLLECTION)
+		0xC0, // ( END_COLLECTION)
+		
+	0x05, 0x0F, // ( USAGE_PAGE ( Physical Interface))
+		
+		// Define the Custom Force parameter block
+		//  Custom Effects are always RAM based
+		//  so ROM flags are not declared.
+	0x09, 0x6B, // ( USAGE ( Set Custom Force Report))
+		0xA1, 0x02, // ( COLLECTION ( Logical))
+		0x85, 0x09, // ( REPORT_ID ( 9))
+		//  Parameter block offset in pool
+		//  Custom For0xce, 0xda,ta offset in pool
+		0x09, 0x23, // ( USAGE ( Parameter Block Offset))
+		0x09, 0x6C, // ( USAGE ( Custom For0xce, 0xDa,ta Offset))
+		0x09, 0x6D, // ( USAGE ( Sample Count))
+		0x15, 0x00, // ( LOGICAL_MINIMUM ( 0))
+		0x26, 0xFD, 0x7F, // ( LOGICAL_MAXIMUM ( 32765) //  32K of RAM or ROM max. 26)
+		0x95, 0x03, // ( REPORT_COUNT ( 3))
+		0x75, 0x10, // ( REPORT_SIZE ( 16))
+		0x91, 0x02, // ( OUTPUT ( Data,Var,Abs))
+		0xC0, // ( END_COLLECTION)
+
+	// Effect Operation Report Definition
+	0x09, 0x77, // ( USAGE ( Effect Operation Report))
+		0xA1, 0x02, // ( COLLECTION ( Logical))
+		0x85, 0x0A, // ( REPORT_ID ( 10))
+		0x09, 0x22, // ( USAGE ( Effect Block Index))
+		0x25, 0x7F, // ( LOGICAL_MAXIMUM ( 127))
+		0x75, 0x07, // ( REPORT_SIZE ( 7))
+		0x95, 0x01, // ( REPORT_COUNT ( 1))
+		0x91, 0x02, // ( OUTPUT ( Data,Var,Abs))
+
+		0x09, 0x24, // ( USAGE ( ROM Flag))
+		0x25, 0x01, // ( LOGICAL_MAXIMUM ( 1))
+		0x75, 0x01, // ( REPORT_SIZE ( 1))
+		0x91, 0x02, // ( OUTPUT ( Data,Var,Abs))
+
+		0x09, 0x78, // ( USAGE ( Effect Operation))
+			0xA1, 0x02, // ( COLLECTION ( Logical))
+			0x09, 0x79, // ( USAGE ( Op Effect Start))
+			0x09, 0x7A, // ( USAGE ( Op Effect Start Solo))
+			0x09, 0x7B, // ( USAGE ( Op Effect Stop))
+			0x15, 0x01, // ( LOGICAL_MINIMUM ( 1))
+			0x25, 0x03, // ( LOGICAL_MAXIMUM ( 3))
+			0x75, 0x08, // ( REPORT_SIZE ( 8))
+			0x91, 0x00, // ( OUTPUT ( Data,Ary,Abs))
+			0xC0, // ( END_COLLECTION)
+
+		0x09, 0x7C, // ( USAGE ( Loop Count))
+		0x15, 0x00, // ( LOGICAL_MINIMUM ( 0))
+		0x26, 0xFF, 0x00, // ( LOGICAL_MAXIMUM ( 255) 26)
+		0x91, 0x02, // ( OUTPUT ( Data,Var,Abs))
+		0xC0, // ( END_COLLECTION)
+
+	// PID Pool Report Definition
+	0x09, 0x7F, // ( USAGE ( PID Pool Report))
+		0xA1, 0x02, // ( COLLECTION ( Logical))
+		0x85, 0x01, // ( REPORT_ID ( 1))
+		0x09, 0x80, // ( USAGE ( RAM Pool Size))
+		0x09, 0x81, // ( USAGE ( ROM Pool Size))
+		0x09, 0x82, // ( USAGE ( ROM Effect Block Count))
+		0x26, 0xFD, 0x7F, // ( LOGICAL_MAXIMUM ( 32765) 26)
+		0x95, 0x03, // ( REPORT_COUNT ( 3))
+		0x75, 0x10, // ( REPORT_SIZE ( 16))
+		0xB1, 0x02, // ( FEATURE ( Data,Var,Abs))
+
+		0x09, 0xA8, // ( USAGE ( Parameter Block Size))
+			0xA1, 0x02, // ( COLLECTION ( Logical))
+			0x09, 0x21, // ( USAGE ( Set Effect Report))
+			0x09, 0x5A, // ( USAGE ( Set Envelope Report))
+			0x09, 0x5F, // ( USAGE ( Set Condition Report))
+			0x09, 0x6E, // ( USAGE ( Set Periodic Report))
+			0x09, 0x73, // ( USAGE ( Set Constant Force Report))
+			0x09, 0x74, // ( USAGE ( Set Ramp Force Report))
+			0x09, 0x6B, // ( USAGE ( Set Custom Force Report))
+			0x26, 0xFF, 0x00, // ( LOGICAL_MAXIMUM ( 255) 26)
+			0x75, 0x08, // ( REPORT_SIZE ( 8))
+			0x95, 0x07, // ( REPORT_COUNT ( 7))
+			0xB1, 0x02, // ( FEATURE ( Data,Var,Abs))
+			0xC0, // ( END_COLLECTION)
+
+		0x25, 0x01, // ( LOGICAL_MAXIMUM ( 1))
+		0x75, 0x07, // ( REPORT_SIZE ( 7))
+		0x95, 0x01, // ( REPORT_COUNT ( 1))
+		0xB1, 0x03, // ( FEATURE ( Cnst,Var,Abs) //  7-bit pad)
+		0x09, 0x67, // ( USAGE ( Isoch Custom Force Enable))
+		0x75, 0x01, // ( REPORT_SIZE ( 1))
+		0xB1, 0x02, // ( FEATURE ( Data,Var,Abs))
+		0xC0, // ( END_COLLECTION)
+
+	// PID State Report Definition
+	0x09, 0x92, // ( USAGE ( PID State Report))
+		0xA1, 0x02, // ( COLLECTION ( Logical))
+		0x85, 0x02, // ( REPORT_ID ( 2))
+		0x09, 0x22, // ( USAGE ( Effect Block Index))
+		0x25, 0x7F, // ( LOGICAL_MAXIMUM ( 127))
+		0x75, 0x07, // ( REPORT_SIZE ( 7))
+		0x81, 0x02, // ( INPUT ( Data,Var,Abs))
+
+		0x09, 0x24, // ( USAGE ( ROM Flag))
+		0x25, 0x01, // ( LOGICAL_MAXIMUM ( 1))
+		0x75, 0x01, // ( REPORT_SIZE ( 1))
+		0x95, 0x01, // ( REPORT_COUNT ( 1))
+		0x81, 0x02, // ( INPUT ( Data,Var,Abs))
+
+		0x09, 0x94, // ( USAGE ( Effect Playing))
+		0x09, 0xA0, // ( USAGE ( Actuators Enabled))
+		0x09, 0xA4, // ( USAGE ( Safety Switch))
+		0x09, 0xA6, // ( USAGE ( Actuator Power))
+		0x75, 0x01, // ( REPORT_SIZE ( 1))
+		0x95, 0x04, // ( REPORT_COUNT ( 4))
+		0x81, 0x02, // ( INPUT ( Data,Var,Abs))
+		0x81, 0x03, // ( INPUT ( Cnst,Var,Abs)  //  4-bit pad)
+		0xC0, // ( END_COLLECTION)
+
+	// PID Device Control Report Definition
+	0x09, 0x95, // ( USAGE ( PID Device Control Report))
+		0xA1, 0x02, // ( COLLECTION ( Logical) )
+		0x85, 0x0B, // ( REPORT_ID ( 11))
+		0x09, 0x96, // ( USAGE ( PID Device Control))
+			0xA1, 0x02, // ( COLLECTION ( LOGICAL) )
+			0x09, 0x97, // ( USAGE ( DC Enable Actuators))
+			0x09, 0x98, // ( USAGE ( DC Disable Actuators) )
+			0x09, 0x99, // ( USAGE ( DC Stop All Effects) )
+			0x09, 0x9A, // ( USAGE ( DC Reset) )
+			0x09, 0x9B, // ( USAGE ( DC Pause) )
+			0x09, 0x9C, // ( USAGE ( DC Continue) )
+			0x15, 0x01, // ( LOGICAL_MINIMUM ( 1))
+			0x25, 0x06, // ( LOGICAL_MAXIMUM ( 6))
+			0x95, 0x08, // ( REPORT_COUNT ( 8)) WAS 8
+			0x75, 0x01, // ( REPORT_SIZE ( 1)) WAS 1
+			0x91, 0x02, // ( OUTPUT( Data,Ary,Abs))
+			0xC0, // ( END_COLLECTION)
+		0xC0, // ( END_COLLECTION)
+
+	// PID Pool Move Report Definition
+	0x09, 0x85, // ( USAGE ( PID Pool Move Report))
+		0xA1, 0x02, // ( COLLECTION ( Logical))
+				0x85, 0x0C, // ( REPORT_ID ( 12))
+				0x09, 0x86, // ( USAGE ( Move Source))
+				0x09, 0x87, // ( USAGE ( Move Destination))
+				0x09, 0x88, // ( USAGE ( Move Length))
+				0x26, 0xFF, 0x7F, // ( LOGICAL_MAXIMUM ( 32767) 26)
+				0x75, 0x10, // ( REPORT_SIZE ( 16))
+				0x95, 0x03, // ( REPORT_COUNT ( 3))
+				0x92, 0x02, 0x01, // ( OUTPUT ( Data,Var,Abs,Buf) 92)
+		0xC0, // ( END_COLLECTION)
+
+	// Device Gain Report Definition
+	0x09, 0x7D, // ( USAGE ( Device Gain Report))
+		0xA1, 0x02, // ( COLLECTION ( Logical))
+		0x85, 0x02, // ( REPORT_ID ( 2))
+		0x09, 0x7E, // ( USAGE ( Device Gain))
+		0x26, 0xFF, 0x00, // ( LOGICAL_MAXIMUM ( 255) 26)
+		0x75, 0x08, // ( REPORT_SIZE ( 8))
+		0x95, 0x01, // ( REPORT_COUNT ( 1))
+		0xB1, 0x02, // ( FEATURE ( Data,Var,Abs))
+		0xC0, // ( END_COLLECTION)
+
+	0xC0 // ( END_COLLECTION (Application) )
+};
+
+
+/** Device descriptor structure. This descriptor, located in FLASH memory, describes the overall
+ *  device characteristics, including the supported USB version, control endpoint size and the
+ *  number of device configurations. The descriptor is read out by the USB host when the enumeration
+ *  process begins.
+ */
+const USB_Descriptor_Device_t PROGMEM DeviceDescriptor =
+{
+	.Header                 = {.Size = sizeof(USB_Descriptor_Device_t), .Type = DTYPE_Device},
+
+	.USBSpecification       = VERSION_BCD(01.10),
+	.Class                  = USB_CSCP_NoDeviceClass,
+	.SubClass               = USB_CSCP_NoDeviceSubclass,
+	.Protocol               = USB_CSCP_NoDeviceProtocol,
+
+	.Endpoint0Size          = FIXED_CONTROL_ENDPOINT_SIZE,
+
+	.VendorID               = 0x03EB,
+	.ProductID              = 0x2043,
+	.ReleaseNumber          = VERSION_BCD(00.01),
+
+	.ManufacturerStrIndex   = 0x01,
+	.ProductStrIndex        = 0x02,
+	.SerialNumStrIndex      = NO_DESCRIPTOR,
+
+	.NumberOfConfigurations = FIXED_NUM_CONFIGURATIONS
+};
+
+/** Configuration descriptor structure. This descriptor, located in FLASH memory, describes the usage
+ *  of the device in one of its supported configurations, including information about any device interfaces
+ *  and endpoints. The descriptor is read out by the USB host during the enumeration process when selecting
+ *  a configuration so that the host may correctly communicate with the USB device.
+ */
+const USB_Descriptor_Configuration_t PROGMEM ConfigurationDescriptor =
+{
+	.Config =
+		{
+			.Header                 = {.Size = sizeof(USB_Descriptor_Configuration_Header_t), .Type = DTYPE_Configuration},
+
+			.TotalConfigurationSize = sizeof(USB_Descriptor_Configuration_t),
+			.TotalInterfaces        = 1,
+
+			.ConfigurationNumber    = 1,
+			.ConfigurationStrIndex  = NO_DESCRIPTOR,
+
+			.ConfigAttributes       = (USB_CONFIG_ATTR_RESERVED | USB_CONFIG_ATTR_SELFPOWERED),
+
+			.MaxPowerConsumption    = USB_CONFIG_POWER_MA(100)
+		},
+
+	.HID_Interface =
+		{
+			.Header                 = {.Size = sizeof(USB_Descriptor_Interface_t), .Type = DTYPE_Interface},
+
+			.InterfaceNumber        = 0x00,
+			.AlternateSetting       = 0x00,
+
+			.TotalEndpoints         = 1,
+
+			.Class                  = HID_CSCP_HIDClass,
+			.SubClass               = HID_CSCP_NonBootSubclass,
+			.Protocol               = HID_CSCP_NonBootProtocol,
+
+			.InterfaceStrIndex      = NO_DESCRIPTOR
+		},
+
+	.HID_JoystickHID =
+		{
+			.Header                 = {.Size = sizeof(USB_HID_Descriptor_HID_t), .Type = HID_DTYPE_HID},
+
+			.HIDSpec                = VERSION_BCD(01.11),
+			.CountryCode            = 0x00,
+			.TotalReportDescriptors = 1,
+			.HIDReportType          = HID_DTYPE_Report,
+			.HIDReportLength        = sizeof(JoystickReport)
+		},
+
+	.HID_ReportINEndpoint =
+		{
+			.Header                 = {.Size = sizeof(USB_Descriptor_Endpoint_t), .Type = DTYPE_Endpoint},
+
+			.EndpointAddress        = (ENDPOINT_DIR_IN | JOYSTICK_EPNUM),
+			.Attributes             = (EP_TYPE_INTERRUPT | ENDPOINT_ATTR_NO_SYNC | ENDPOINT_USAGE_DATA),
+			.EndpointSize           = JOYSTICK_EPSIZE,
+			.PollingIntervalMS      = 0x01
+		}
+};
+
+/** Language descriptor structure. This descriptor, located in FLASH memory, is returned when the host requests
+ *  the string descriptor with index 0 (the first index). It is actually an array of 16-bit integers, which indicate
+ *  via the language ID table available at USB.org what languages the device supports for its string descriptors.
+ */
+const USB_Descriptor_String_t PROGMEM LanguageString =
+{
+	.Header                 = {.Size = USB_STRING_LEN(1), .Type = DTYPE_String},
+
+	.UnicodeString          = {LANGUAGE_ID_ENG}
+};
+
+/** Manufacturer descriptor string. This is a Unicode string containing the manufacturer's details in human readable
+ *  form, and is read out upon request by the host when the appropriate string ID is requested, listed in the Device
+ *  Descriptor.
+ */
+const USB_Descriptor_String_t PROGMEM ManufacturerString =
+{
+	.Header                 = {.Size = USB_STRING_LEN(11), .Type = DTYPE_String},
+
+	.UnicodeString          = L"Dean Camera"
+};
+
+/** Product descriptor string. This is a Unicode string containing the product's details in human readable form,
+ *  and is read out upon request by the host when the appropriate string ID is requested, listed in the Device
+ *  Descriptor.
+ */
+const USB_Descriptor_String_t PROGMEM ProductString =
+{
+	.Header                 = {.Size = USB_STRING_LEN(18), .Type = DTYPE_String},
+
+	.UnicodeString          = L"LUFA Joystick Demo"
+};
+
+/** This function is called by the library when in device mode, and must be overridden (see library "USB Descriptors"
+ *  documentation) by the application code so that the address and size of a requested descriptor can be given
+ *  to the USB library. When the device receives a Get Descriptor request on the control endpoint, this function
+ *  is called so that the descriptor details can be passed back and the appropriate descriptor sent back to the
+ *  USB host.
+ */
+uint16_t CALLBACK_USB_GetDescriptor(const uint16_t wValue,
+                                    const uint8_t wIndex,
+                                    const void** const DescriptorAddress)
+{
+	const uint8_t  DescriptorType   = (wValue >> 8);
+	const uint8_t  DescriptorNumber = (wValue & 0xFF);
+
+	const void* Address = NULL;
+	uint16_t    Size    = NO_DESCRIPTOR;
+
+	switch (DescriptorType)
+	{
+		case DTYPE_Device:
+			Address = &DeviceDescriptor;
+			Size    = sizeof(USB_Descriptor_Device_t);
+			break;
+		case DTYPE_Configuration:
+			Address = &ConfigurationDescriptor;
+			Size    = sizeof(USB_Descriptor_Configuration_t);
+			break;
+		case DTYPE_String:
+			switch (DescriptorNumber)
+			{
+				case 0x00:
+					Address = &LanguageString;
+					Size    = pgm_read_byte(&LanguageString.Header.Size);
+					break;
+				case 0x01:
+					Address = &ManufacturerString;
+					Size    = pgm_read_byte(&ManufacturerString.Header.Size);
+					break;
+				case 0x02:
+					Address = &ProductString;
+					Size    = pgm_read_byte(&ProductString.Header.Size);
+					break;
+			}
+
+			break;
+		case HID_DTYPE_HID:
+			Address = &ConfigurationDescriptor.HID_JoystickHID;
+			Size    = sizeof(USB_HID_Descriptor_HID_t);
+			break;
+		case HID_DTYPE_Report:
+			Address = &JoystickReport;
+			Size    = sizeof(JoystickReport);
+			break;
+	}
+
+	*DescriptorAddress = Address;
+	return Size;
+}
+}}}
+
+and here is the report data handling:
+
+{{{
+/*
+             LUFA Library
+     Copyright (C) Dean Camera, 2012.
+
+  dean [at] fourwalledcubicle [dot] com
+           www.lufa-lib.org
+*/
+
+/*
+  Copyright 2012  Dean Camera (dean [at] fourwalledcubicle [dot] com)
+
+  Permission to use, copy, modify, distribute, and sell this
+  software and its documentation for any purpose is hereby granted
+  without fee, provided that the above copyright notice appear in
+  all copies and that both that the copyright notice and this
+  permission notice and warranty disclaimer appear in supporting
+  documentation, and that the name of the author not be used in
+  advertising or publicity pertaining to distribution of the
+  software without specific, written prior permission.
+
+  The author disclaim all warranties with regard to this
+  software, including all implied warranties of merchantability
+  and fitness.  In no event shall the author be liable for any
+  special, indirect or consequential damages or any damages
+  whatsoever resulting from loss of use, data or profits, whether
+  in an action of contract, negligence or other tortious action,
+  arising out of or in connection with the use or performance of
+  this software.
+*/
+
+/** \file
+ *
+ *  Main source file for the Joystick demo. This file contains the main tasks of
+ *  the demo and is responsible for the initial application hardware configuration.
+ */
+
+#include "Joystick.h"
+#include "ffb.h"
+
+/** Buffer to hold the previously generated HID report, for comparison purposes inside the HID class driver. */
+static uint8_t PrevJoystickHIDReportBuffer[sizeof(USB_JoystickReport_Data_t)];
+
+/** LUFA HID Class driver interface configuration and state information. This structure is
+ *  passed to all HID Class driver functions, so that multiple instances of the same class
+ *  within a device can be differentiated from one another.
+ */
+USB_ClassInfo_HID_Device_t Joystick_HID_Interface =
+	{
+		.Config =
+			{
+				.InterfaceNumber              = 0,
+
+				.ReportINEndpointNumber       = JOYSTICK_EPNUM,
+				.ReportINEndpointSize         = JOYSTICK_EPSIZE,
+				.ReportINEndpointDoubleBank   = false,
+
+				.PrevReportINBuffer           = PrevJoystickHIDReportBuffer,
+				.PrevReportINBufferSize       = sizeof(PrevJoystickHIDReportBuffer),
+			},
+	};
+
+
+/** Main program entry point. This routine contains the overall program flow, including initial
+ *  setup of all components and the main program loop.
+ */
+int main(void)
+{
+	SetupHardware();
+
+	LEDs_SetAllLEDs(LEDS_ALL_LEDS);
+	sei();
+
+	for (;;)
+	{
+		HID_Device_USBTask(&Joystick_HID_Interface);
+		USB_USBTask();
+	}
+}
+
+/** Configures the board hardware and chip peripherals for the demo's functionality. */
+void SetupHardware(void)
+{
+	/* Disable watchdog if enabled by bootloader/fuses */
+	MCUSR &= ~(1 << WDRF);
+	wdt_disable();
+
+	/* Disable clock division */
+	clock_prescale_set(clock_div_1);
+
+	/* Hardware Initialization */
+	LEDs_Init();
+	USB_Init();
+
+	FfbInitMidi();
+}
+
+/** Event handler for the library USB Connection event. */
+void EVENT_USB_Device_Connect(void)
+{
+	LEDs_SetAllLEDs(LEDS_NO_LEDS);
+}
+
+/** Event handler for the library USB Disconnection event. */
+void EVENT_USB_Device_Disconnect(void)
+{
+	LEDs_SetAllLEDs(LEDS_ALL_LEDS);
+}
+
+/** Event handler for the library USB Configuration Changed event. */
+void EVENT_USB_Device_ConfigurationChanged(void)
+{
+	bool ConfigSuccess = true;
+
+	ConfigSuccess &= HID_Device_ConfigureEndpoints(&Joystick_HID_Interface);
+
+	USB_Device_EnableSOFEvents();
+
+	LEDs_SetAllLEDs(ConfigSuccess ? LEDS_NO_LEDS : LEDS_ALL_LEDS);
+}
+
+/** Event handler for the library USB Control Request reception event. */
+void EVENT_USB_Device_ControlRequest(void)
+{
+	HID_Device_ProcessControlRequest(&Joystick_HID_Interface);
+}
+
+/** Event handler for the USB device Start Of Frame event. */
+void EVENT_USB_Device_StartOfFrame(void)
+{
+	HID_Device_MillisecondElapsed(&Joystick_HID_Interface);
+}
+
+
+
+typedef struct
+{
+	int8_t 	position;
+	uint8_t buttons;
+} JoystickData;
+
+static volatile JoystickData prev_joystick_data;
+
+volatile bool sPIDStatusPending = false;
+volatile USB_FFBReport_PIDState_Input_Data_t sPIDStatus;
+
+
+static void LogData(const char *text, uint8_t reportId, uint8_t reportType, const void *data, uint16_t len)
+{
+	uint8_t temp = 0;	// Start text
+	FfbOnUsbData(&temp, 1);
+	FfbOnUsbData((uint8_t*) text , strlen(text) + 1);	// Include terminating NULL
+
+	temp = 2;
+	FfbOnUsbData(&temp, 1);	// Start binary
+	FfbOnUsbData(&reportId, 1);
+	FfbOnUsbData(&reportType, 1);
+
+    temp = (uint8_t) (len & 0xFF);
+	if (temp > 0)
+		{
+		FfbOnUsbData(&temp, 1);
+		FfbOnUsbData((uint8_t*) data, temp);
+		}
+}
+
+/** HID class driver callback function for the creation of HID reports to the host.
+ *
+ *  \param[in]     HIDInterfaceInfo  Pointer to the HID class interface configuration structure being referenced
+ *  \param[in,out] ReportID    Report ID requested by the host if non-zero, otherwise callback should set to the generated report ID
+ *  \param[in]     ReportType  Type of the report to create, either HID_REPORT_ITEM_In or HID_REPORT_ITEM_Feature
+ *  \param[out]    ReportData  Pointer to a buffer where the created report should be stored
+ *  \param[out]    ReportSize  Number of bytes written in the report (or zero if no report is to be sent)
+ *
+ *  \return Boolean true to force the sending of the report, false to let the library determine if it needs to be sent
+ */
+
+bool CALLBACK_HID_Device_CreateHIDReport(USB_ClassInfo_HID_Device_t* const HIDInterfaceInfo,
+                                         uint8_t* const ReportID,
+                                         const uint8_t ReportType,
+                                         void* ReportData,
+                                         uint16_t* const ReportSize)
+{
+	bool askedReport1 = false;
+
+	if (sPIDStatusPending || *ReportID == 2)
+		{
+		USB_FFBReport_PIDState_Input_Data_t* data = (USB_FFBReport_PIDState_Input_Data_t*)ReportData;
+		data->effectBlockIndex = sPIDStatus.effectBlockIndex;
+		data->status = sPIDStatus.status; // bits 0=EffectPlaying, 1=EnableActuators, 2=SafetySwitch, 3=ActuatorPower
+		sPIDStatusPending = false;
+
+		*ReportID = 2;
+		*ReportSize = sizeof(USB_FFBReport_PIDState_Input_Data_t);
+		}
+	else if (*ReportID == 1  || *ReportID == 0)
+		{
+		USB_JoystickReport_Data_t* JoystickReport = (USB_JoystickReport_Data_t*)ReportData;
+
+		// "Read" the joystick
+		if (prev_joystick_data.buttons == 0)
+			prev_joystick_data.buttons = 0b01010101;
+		else
+			prev_joystick_data.buttons = prev_joystick_data.buttons << 1;
+
+		if (prev_joystick_data.position < 100)
+			prev_joystick_data.position++;
+		else
+			prev_joystick_data.position = -100;
+
+		JoystickReport->Button = prev_joystick_data.buttons;
+		JoystickReport->Y = prev_joystick_data.position;
+		JoystickReport->X = prev_joystick_data.position;
+
+//		JoystickReport->effectBlockIndex = 0;
+//		JoystickReport->state = 0xFF;
+
+		*ReportID = 1;
+
+		*ReportSize = sizeof(USB_JoystickReport_Data_t);
+		askedReport1 = true;
+		}
+/*	else if (ReportType == HID_REPORT_ITEM_Feature)
+		{
+		FfbOnUsbData(ReportID, 1);
+		FfbOnUsbData((uint8_t*) &ReportType, 1);
+		}*/
+
+	if (!askedReport1)
+		{
+		LogData("Sending IN: ", *ReportID, ReportType, ReportData, *ReportSize);
+		}
+
+//	FfbOnUsbData((uint8_t*) ReportData, *ReportSize);
+	return true;
+}
+
+
+static void SendStatusReport(uint8_t effectId, uint8_t status)
+	{
+	sPIDStatusPending = true;
+	sPIDStatus.effectBlockIndex = effectId;
+	sPIDStatus.status = status;
+	}
+
+
+volatile uint8_t effectCount = 0;
+
+/** HID class driver callback function for the processing of HID reports from the host.
+ *
+ *  \param[in] HIDInterfaceInfo  Pointer to the HID class interface configuration structure being referenced
+ *  \param[in] ReportID    Report ID of the received report from the host
+ *  \param[in] ReportType  The type of report that the host has sent, either HID_REPORT_ITEM_Out or HID_REPORT_ITEM_Feature
+ *  \param[in] ReportData  Pointer to a buffer where the received report has been stored
+ *  \param[in] ReportSize  Size in bytes of the received HID report
+ */
+void CALLBACK_HID_Device_ProcessHIDReport(USB_ClassInfo_HID_Device_t* const HIDInterfaceInfo,
+                                          const uint8_t ReportID,
+                                          const uint8_t ReportType,
+                                          const void* ReportData,
+                                          const uint16_t ReportSize)
+{
+	// Host->Device reports
+
+	LogData("Received OUT:", ReportID, ReportType, ReportData, ReportSize);
+
+	uint8_t *data = (uint8_t*) ReportData;
+
+	if (ReportID == 0x0b)	// Device Control
+		{
+		//	uint8_t effectBlockIndex;	// 7bits + MSB=ROM Flag
+		//	uint8_t	state; // bits 0=EffectPlaying, 1=EnableActuators, 2=SafetySwitch, 3=ActuatorPower
+
+		if (data[0] == 0x04)	// Stop all effects
+			SendStatusReport(0x7f, 0b00001110);
+		else if (data[0] == 0x08)	// Reset
+			{
+			effectCount = 0;
+			SendStatusReport(0x7f, 0b00001110);
+			}
+		}
+
+	else if (ReportID == 0x05)	// Set Constant Force
+		{
+		effectCount++;
+		SendStatusReport(effectCount, 0b00001111);
+		}
+
+	else if (ReportID == 0x0a)	// Effect Operation
+		{
+		if (data[1] == 0x01)	// Start effect
+			SendStatusReport(data[0], 0b00001111);
+		else if (data[1] == 0x02)	// Start Solo
+			SendStatusReport(data[0], 0b00001111);
+		else if (data[1] == 0x03)	// Stop
+			SendStatusReport(data[0], 0b00001111);
+		}
+	}
+}}}
