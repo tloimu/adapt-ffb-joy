@@ -9,13 +9,15 @@ This page contains the project's plan and status. It lists what is still missing
 
 Now, an version of 3DP-Vert exist that works as a proof of concept for controlling force feedback on the Sidewinder FFP joystick. It can enable "FFB mode" on the joystick. It also allows starting a constant force effect (to left) and to stopping it by pressing joystick buttons. To free the UART TX-pin for sending the MIDI data to the joystick 3DP-Vert's button pins were moved to B0..B3 pins in the AVR.
 
+Also, a LUFA based prototype for a generic force feedback joystick is running and receiving effects data from the host. However, this prototype has some issues (see Issue-Tracking).
+
 == To Do ==
 
 Things still to do.
 
 === USB HID Descriptor ==
 
-A working USB HID descriptor with force feedback parts is needed. HID specs on physical devices is to be consulted (see USB.org's doc on HID PID).
+A fully working USB HID descriptor with force feedback parts is needed. HID specs on physical devices is to be consulted (see USB.org's doc on HID PID). Only partially working has now been achieved. See Wiki page *USBFfbHid* for details.
 
 There are a few example in web how to do this with a joystick-like HID. It is preferrable to have a HID descriptor that is based on the 3DPVert-project's Sidewinder ForceFeedback Pro, but that would add the FFB parts to it.
 
