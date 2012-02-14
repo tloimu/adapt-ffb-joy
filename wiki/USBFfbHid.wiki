@@ -3,15 +3,14 @@
 
 = Introduction =
 
-Version: 1 (13.2.2012)
+Version: 2 (14.2.2012)
 
 Here is the current status of the HID descriptors for PID device. It is a simple joystick that supports some force feedback effects.
 
-This sample does not work properly yet. It enumerates and joystick part works. But is not automatically recognized as force feedback device without manual steps of modifying some registry settings (see details below).
+This sample does not fully work yet. It enumerates and joystick part works. But is not automatically recognized as force feedback device without manual steps of modifying some registry settings (see details below). After that, it receives all effects data host sends.
 
 *The burning questions* are now:
-  * What should device respond to host in order to properly ACK the *Set Constant Force* report? Would it be easier to use device managed memory model instead?
-  * Why doesn't Windows see the device immediately as FFB device? Why is modifying the registry needed? What's missing from the HID descriptor or is it something that happens in the PID protocol - device only gets the _reset_ command when FEdit is launched. Should the device respond to it somehow?
+  * Why doesn't Windows see the device immediately as FFB device? Why is modifying the registry needed? What's missing from the HID descriptor or is it something that happens in the PID protocol - device only gets the _reset_ command when FEdit is launched. Should the device respond to it somehow? Or is the trick in the install time protocol - i.e. does the host query some features from the device on top of the HID descriptor?
 
 = Details =
 
@@ -25,49 +24,63 @@ To run the device and allow FEDit to recognize it as device
   # Open registy value *HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\MediaProperties\PrivateProperties\Joystick\OEM\VID_03EB&PID_2043\OEMForceFeedback\Effects\{13541C20-8E33-11D0-9AD0-00A0C9A06E35}* and modify its value named *Attributes* to binary value hex:26,00,0f,00,01,06,00,00,fd,01,00,00,fd,01,00,00,*30*,00,00,00 (i.e. change the fourth last byte from 0x00 to 0x30 - this is enabling effects to the joystick axis)
   # Open FEdit (or another FFB application) again and the device is recognized as FFB device and you can play effects to it
 
-The effects are sent to device, but the device apparently does not acknowledge it correctly (it attempts to use PID Status report) and playing the effect fails. Debug wire (UART TX) will show the data being received and set as:
+Debug wire (UART TX) will show the data being received and set as:
 
 Open FEdit:
 {{{
-Received OUT:
- 0b 01  # Report ID 0xOB (Device Control) type 0x01 (OUT)
- 08     # DC Reset 
+Control Request (value, index, all data):
+ 01 03
+ 00 00
+ a1 01 01 03 00 00 0f 00
+  = GetReport
+  -> GetReport:
+ 00
+ a1 01 01 03 00 00 0f 00
+Recived OUT:
+ 0b
+ 08        # Device Reset
+Recived OUT:
+ 0b
+ 04        # Device Stop All Effects
 }}}
 
 Play a constant force effect:
 
 {{{
-Sending IN:
- 02 00  # Device responds with PID Status on
- 7f 0e  # effect ID 0x7F (all) and status 0x0E (actuators enabled, effect not playing)
-Received OUT:
- 05 01     # Report ID 0x05 (Set Constant Force Report)
- ff 7f 7e  # effect id 0x7FFF (-1?) magnitude 0x7E (max value)
-Sending IN:
- 02 00  # Device responds with PID Status on
- 01 0e  # effect ID 0x01 and status 0x0E (actuators enabled,  effect no playing - tried other statuses here too but no change)
+Recived OUT:
+ 05             # Set Constant Force
+ ff 7f 7e       # Magnitude 7e (max)
+Recived OUT:
+ 02             # Set Envelope
+ ff 7f 7f 7f 00 00 00 00
+Recived OUT:
+ 01             # Set Effect (constant force)
+ 7f 01 ff ff ff ff 00 00 7f 00 00 00 00 ff ff ff ff
 
-# Apparently here the host cancels the playing for not getting
-# a proper ACK (or something) from the device since no more effect
-# related parameters are sent:
+(wait until effect should play)
 
-Received OUT:          
- 0a 01     # Report ID 0x0A (Effect Operation)
- 01 01 00  # Effect ID 0x01 operation 0x01 (Stop)
-Sending IN:
- 02 00     # PID Status...
- 01 0f
+Recived OUT:
+ 0a             # Effect Operation: Start    
+ 01 01 01
 }}}
 
-Exit FEdit:
+Stop playing the effect:
 
 {{{
-Received OUT:
- 0b 01
- 08        # Device Control Reset
-Sending IN:
- 02 00     # ...
- 7f 0e
+Recived OUT:
+ 0a             # Effect Operation: Stop
+ 01 03 00
+}}}
+
+Put FEdit to background:
+
+{{{
+Recived OUT:
+ 0a
+ 01 03 00
+Recived OUT:
+ 0b
+ 08
 }}}
 
 The device sends the above debugging data (without the comments of course) to UART TX pin in a format that allows string and binary data dumps:
@@ -443,7 +456,7 @@ const USB_Descriptor_HIDReport_Datatype_t PROGMEM JoystickReport[] =
 		0x91, 0x02, // ( OUTPUT ( Data,Var,Abs))
 		0x0B, 0x3B, 0x00, 0x01, 0x00, // ( USAGE ( Generic Desktop:Byte Count) 0x0B, 0x3B, 00)
 		0x26, 0x00, 0x01, // ( LOGICAL_MAXIMUM ( 256) 26)
-		0x75, 0x09, // ( REPORT_SIZE ( 9))
+		0x75, 0x09, // ( REPORT_SIZE ( 9))	// ???? should this be 8, or 16?!?!?
 		0x91, 0x02, // ( OUTPUT ( Data,Var,Abs))
 		0x09, 0x69, // ( USAGE ( Custom For0xce, 0xDa,ta))
 		0x26, 0xFF, 0x00, // ( LOGICAL_MAXIMUM ( 255) 26)
@@ -628,8 +641,6 @@ const USB_Descriptor_HIDReport_Datatype_t PROGMEM JoystickReport[] =
 
 	0xC0 // ( END_COLLECTION (Application) )
 };
-
-
 /** Device descriptor structure. This descriptor, located in FLASH memory, describes the overall
  *  device characteristics, including the supported USB version, control endpoint size and the
  *  number of device configurations. The descriptor is read out by the USB host when the enumeration
@@ -686,7 +697,7 @@ const USB_Descriptor_Configuration_t PROGMEM ConfigurationDescriptor =
 			.InterfaceNumber        = 0x00,
 			.AlternateSetting       = 0x00,
 
-			.TotalEndpoints         = 1,
+			.TotalEndpoints         = 2,
 
 			.Class                  = HID_CSCP_HIDClass,
 			.SubClass               = HID_CSCP_NonBootSubclass,
@@ -706,6 +717,7 @@ const USB_Descriptor_Configuration_t PROGMEM ConfigurationDescriptor =
 			.HIDReportLength        = sizeof(JoystickReport)
 		},
 
+
 	.HID_ReportINEndpoint =
 		{
 			.Header                 = {.Size = sizeof(USB_Descriptor_Endpoint_t), .Type = DTYPE_Endpoint},
@@ -714,6 +726,16 @@ const USB_Descriptor_Configuration_t PROGMEM ConfigurationDescriptor =
 			.Attributes             = (EP_TYPE_INTERRUPT | ENDPOINT_ATTR_NO_SYNC | ENDPOINT_USAGE_DATA),
 			.EndpointSize           = JOYSTICK_EPSIZE,
 			.PollingIntervalMS      = 0x01
+		},
+
+	.HID_ReportOUTEndpoint =
+		{
+			.Header                 = {.Size = sizeof(USB_Descriptor_Endpoint_t), .Type = DTYPE_Endpoint},
+
+			.EndpointAddress        = (ENDPOINT_DIR_OUT | FFB_EPNUM),
+			.Attributes             = (EP_TYPE_INTERRUPT | ENDPOINT_ATTR_NO_SYNC | ENDPOINT_USAGE_DATA),
+			.EndpointSize           = FFB_EPSIZE,
+			.PollingIntervalMS      = 0x20
 		}
 };
 
@@ -747,7 +769,7 @@ const USB_Descriptor_String_t PROGMEM ProductString =
 {
 	.Header                 = {.Size = USB_STRING_LEN(18), .Type = DTYPE_String},
 
-	.UnicodeString          = L"LUFA Joystick Demo"
+	.UnicodeString          = L"LUFA Joystick wFFB"
 };
 
 /** This function is called by the library when in device mode, and must be overridden (see library "USB Descriptors"
@@ -794,11 +816,11 @@ uint16_t CALLBACK_USB_GetDescriptor(const uint16_t wValue,
 			}
 
 			break;
-		case HID_DTYPE_HID:
+		case DTYPE_HID:
 			Address = &ConfigurationDescriptor.HID_JoystickHID;
 			Size    = sizeof(USB_HID_Descriptor_HID_t);
 			break;
-		case HID_DTYPE_Report:
+		case DTYPE_Report:
 			Address = &JoystickReport;
 			Size    = sizeof(JoystickReport);
 			break;
@@ -844,56 +866,33 @@ and here is the report data handling:
 
 /** \file
  *
- *  Main source file for the Joystick demo. This file contains the main tasks of
- *  the demo and is responsible for the initial application hardware configuration.
+ *  Main source file for the Joystick demo. This file contains the main tasks of the demo and
+ *  is responsible for the initial application hardware configuration.
  */
 
 #include "Joystick.h"
 #include "ffb.h"
 
-/** Buffer to hold the previously generated HID report, for comparison purposes inside the HID class driver. */
-static uint8_t PrevJoystickHIDReportBuffer[sizeof(USB_JoystickReport_Data_t)];
-
-/** LUFA HID Class driver interface configuration and state information. This structure is
- *  passed to all HID Class driver functions, so that multiple instances of the same class
- *  within a device can be differentiated from one another.
- */
-USB_ClassInfo_HID_Device_t Joystick_HID_Interface =
-	{
-		.Config =
-			{
-				.InterfaceNumber              = 0,
-
-				.ReportINEndpointNumber       = JOYSTICK_EPNUM,
-				.ReportINEndpointSize         = JOYSTICK_EPSIZE,
-				.ReportINEndpointDoubleBank   = false,
-
-				.PrevReportINBuffer           = PrevJoystickHIDReportBuffer,
-				.PrevReportINBufferSize       = sizeof(PrevJoystickHIDReportBuffer),
-			},
-	};
-
-
-/** Main program entry point. This routine contains the overall program flow, including initial
- *  setup of all components and the main program loop.
+/** Main program entry point. This routine configures the hardware required by the application, then
+ *  enters a loop to run the application tasks in sequence.
  */
 int main(void)
-{
+	{
 	SetupHardware();
 
-	LEDs_SetAllLEDs(LEDS_ALL_LEDS);
+	LEDs_SetAllLEDs(LEDS_NO_LEDS);
 	sei();
 
 	for (;;)
-	{
-		HID_Device_USBTask(&Joystick_HID_Interface);
+		{
+		HID_Task();
 		USB_USBTask();
+		}
 	}
-}
 
 /** Configures the board hardware and chip peripherals for the demo's functionality. */
 void SetupHardware(void)
-{
+	{
 	/* Disable watchdog if enabled by bootloader/fuses */
 	MCUSR &= ~(1 << WDRF);
 	wdt_disable();
@@ -906,207 +905,254 @@ void SetupHardware(void)
 	USB_Init();
 
 	FfbInitMidi();
-}
+	}
 
-/** Event handler for the library USB Connection event. */
+/** Event handler for the USB_Connect event. This indicates that the device is enumerating via the status LEDs and
+ *  starts the library USB task to begin the enumeration and USB management process.
+ */
 void EVENT_USB_Device_Connect(void)
 {
-	LEDs_SetAllLEDs(LEDS_NO_LEDS);
-}
-
-/** Event handler for the library USB Disconnection event. */
-void EVENT_USB_Device_Disconnect(void)
-{
+	/* Indicate USB enumerating */
 	LEDs_SetAllLEDs(LEDS_ALL_LEDS);
 }
 
-/** Event handler for the library USB Configuration Changed event. */
-void EVENT_USB_Device_ConfigurationChanged(void)
+/** Event handler for the USB_Disconnect event. This indicates that the device is no longer connected to a host via
+ *  the status LEDs and stops the USB management and joystick reporting tasks.
+ */
+void EVENT_USB_Device_Disconnect(void)
 {
+	/* Indicate USB not ready */
+	LEDs_SetAllLEDs(LEDS_NO_LEDS);
+}
+
+/** Event handler for the USB_ConfigurationChanged event. This is fired when the host set the current configuration
+ *  of the USB device after enumeration - the device endpoints are configured and the joystick reporting task started.
+ */
+void EVENT_USB_Device_ConfigurationChanged(void)
+	{
 	bool ConfigSuccess = true;
 
-	ConfigSuccess &= HID_Device_ConfigureEndpoints(&Joystick_HID_Interface);
+	/* Setup HID Report Endpoint */
+	ConfigSuccess &= Endpoint_ConfigureEndpoint(JOYSTICK_EPNUM, EP_TYPE_INTERRUPT, ENDPOINT_DIR_IN,
+	                                            JOYSTICK_EPSIZE, ENDPOINT_BANK_SINGLE);
 
-	USB_Device_EnableSOFEvents();
+	ConfigSuccess &= Endpoint_ConfigureEndpoint(FFB_EPNUM, EP_TYPE_INTERRUPT, ENDPOINT_DIR_OUT,
+	                                            FFB_EPSIZE, ENDPOINT_BANK_SINGLE);
 
+	/* Indicate endpoint configuration success or failure */
 	LEDs_SetAllLEDs(ConfigSuccess ? LEDS_NO_LEDS : LEDS_ALL_LEDS);
-}
-
-/** Event handler for the library USB Control Request reception event. */
-void EVENT_USB_Device_ControlRequest(void)
-{
-	HID_Device_ProcessControlRequest(&Joystick_HID_Interface);
-}
-
-/** Event handler for the USB device Start Of Frame event. */
-void EVENT_USB_Device_StartOfFrame(void)
-{
-	HID_Device_MillisecondElapsed(&Joystick_HID_Interface);
-}
-
+	}
 
 
 typedef struct
-{
+	{
 	int8_t 	position;
 	uint8_t buttons;
-} JoystickData;
+	} JoystickData;
 
 static volatile JoystickData prev_joystick_data;
 
 volatile bool sPIDStatusPending = false;
 volatile USB_FFBReport_PIDState_Input_Data_t sPIDStatus;
 
-
-static void LogData(const char *text, uint8_t reportId, uint8_t reportType, const void *data, uint16_t len)
-{
+static void LogText(const char *text)
+	{
 	uint8_t temp = 0;	// Start text
-	FfbOnUsbData(&temp, 1);
-	FfbOnUsbData((uint8_t*) text , strlen(text) + 1);	// Include terminating NULL
+	FfbSendData(&temp, 1);
+	FfbSendData((uint8_t*) text , strlen(text) + 1);	// Include terminating NULL
+	}
 
-	temp = 2;
-	FfbOnUsbData(&temp, 1);	// Start binary
-	FfbOnUsbData(&reportId, 1);
-	FfbOnUsbData(&reportType, 1);
-
-    temp = (uint8_t) (len & 0xFF);
+static void LogBinary(const void *data, uint16_t len)
+	{
+    uint8_t temp = (uint8_t) (len & 0xFF);
 	if (temp > 0)
 		{
-		FfbOnUsbData(&temp, 1);
-		FfbOnUsbData((uint8_t*) data, temp);
+		FfbSendData(&temp, 1);
+		FfbSendData((uint8_t*) data, temp);
 		}
-}
+	}
 
-/** HID class driver callback function for the creation of HID reports to the host.
+static void LogData(const char *text, uint8_t reportId, const void *data, uint16_t len)
+	{
+	LogText(text);
+	LogBinary(&reportId, 1);
+	LogBinary(data, len);
+	}
+
+// Log all reports found in the given data (may have one or more)
+static void LogReport(const char *text, const uint8_t *reportSizeArray, uint8_t *data, uint16_t len)
+	{
+	uint8_t *p = data;
+
+	while (p < data + len)
+		{
+		uint8_t replen = reportSizeArray[p[0]-1];
+		LogText(text);
+		LogBinary(p, 1);
+		if (replen > 1)
+			LogBinary(&p[1], replen-1);
+		p += replen;
+		}
+	}
+
+/** Event handler for the USB_ControlRequest event. This is used to catch and process control requests sent to
+ *  the device from the USB host before passing along unhandled control requests to the library for processing
+ *  internally.
+ */
+void EVENT_USB_Device_ControlRequest(void)
+	{
+	/* Handle HID Class specific requests */
+
+	/*
+	USB_ControlRequest :=
+		uint8_t 	bmRequestType
+		uint8_t 	bRequest
+		uint16_t 	wValue
+		uint16_t 	wIndex
+		uint16_t 	wLength
+	*/
+
+	LogText("Control Request (value, index, all data): ");
+	LogBinary(&USB_ControlRequest.wValue, 2);
+	LogBinary(&USB_ControlRequest.wIndex, 2);
+	LogBinary(&USB_ControlRequest, sizeof(USB_ControlRequest));
+
+	switch (USB_ControlRequest.bRequest)
+		{
+		case HID_REQ_GetReport:
+			LogText("  = GetReport");
+			if (USB_ControlRequest.bmRequestType == (REQDIR_DEVICETOHOST | REQTYPE_CLASS | REQREC_INTERFACE))
+				{
+				LEDs_SetAllLEDs(LEDS_ALL_LEDS);
+
+				USB_JoystickReport_Data_t JoystickReportData;
+
+				/* Create the next HID report to send to the host */
+				GetNextReport(&JoystickReportData);
+
+				Endpoint_ClearSETUP();
+
+				/* Write the report data to the control endpoint */
+				Endpoint_Write_Control_Stream_LE(&JoystickReportData, sizeof(JoystickReportData));
+				Endpoint_ClearOUT();
+
+				LogData("  -> GetReport:", 0, &USB_ControlRequest, sizeof(USB_ControlRequest));
+				LEDs_SetAllLEDs(LEDS_NO_LEDS);
+				}
+
+
+			break;
+		case HID_REQ_SetReport:
+			LogText("  = SetReport");
+			if (USB_ControlRequest.bmRequestType == (REQDIR_HOSTTODEVICE | REQTYPE_CLASS | REQREC_INTERFACE))
+				{
+				// ???? Do we need to do anything here?
+				}
+			break;
+		}
+	}
+
+/** Fills the given HID report data structure with the next HID report to send to the host.
  *
- *  \param[in]     HIDInterfaceInfo  Pointer to the HID class interface configuration structure being referenced
- *  \param[in,out] ReportID    Report ID requested by the host if non-zero, otherwise callback should set to the generated report ID
- *  \param[in]     ReportType  Type of the report to create, either HID_REPORT_ITEM_In or HID_REPORT_ITEM_Feature
- *  \param[out]    ReportData  Pointer to a buffer where the created report should be stored
- *  \param[out]    ReportSize  Number of bytes written in the report (or zero if no report is to be sent)
+ *  \param[out] ReportData  Pointer to a HID report data structure to be filled
  *
- *  \return Boolean true to force the sending of the report, false to let the library determine if it needs to be sent
+ *  \return Boolean true if the new report differs from the last report, false otherwise
  */
 
-bool CALLBACK_HID_Device_CreateHIDReport(USB_ClassInfo_HID_Device_t* const HIDInterfaceInfo,
-                                         uint8_t* const ReportID,
-                                         const uint8_t ReportType,
-                                         void* ReportData,
-                                         uint16_t* const ReportSize)
-{
-	bool askedReport1 = false;
-
-	if (sPIDStatusPending || *ReportID == 2)
-		{
-		USB_FFBReport_PIDState_Input_Data_t* data = (USB_FFBReport_PIDState_Input_Data_t*)ReportData;
-		data->effectBlockIndex = sPIDStatus.effectBlockIndex;
-		data->status = sPIDStatus.status; // bits 0=EffectPlaying, 1=EnableActuators, 2=SafetySwitch, 3=ActuatorPower
-		sPIDStatusPending = false;
-
-		*ReportID = 2;
-		*ReportSize = sizeof(USB_FFBReport_PIDState_Input_Data_t);
-		}
-	else if (*ReportID == 1  || *ReportID == 0)
-		{
-		USB_JoystickReport_Data_t* JoystickReport = (USB_JoystickReport_Data_t*)ReportData;
-
-		// "Read" the joystick
-		if (prev_joystick_data.buttons == 0)
-			prev_joystick_data.buttons = 0b01010101;
-		else
-			prev_joystick_data.buttons = prev_joystick_data.buttons << 1;
-
-		if (prev_joystick_data.position < 100)
-			prev_joystick_data.position++;
-		else
-			prev_joystick_data.position = -100;
-
-		JoystickReport->Button = prev_joystick_data.buttons;
-		JoystickReport->Y = prev_joystick_data.position;
-		JoystickReport->X = prev_joystick_data.position;
-
-//		JoystickReport->effectBlockIndex = 0;
-//		JoystickReport->state = 0xFF;
-
-		*ReportID = 1;
-
-		*ReportSize = sizeof(USB_JoystickReport_Data_t);
-		askedReport1 = true;
-		}
-/*	else if (ReportType == HID_REPORT_ITEM_Feature)
-		{
-		FfbOnUsbData(ReportID, 1);
-		FfbOnUsbData((uint8_t*) &ReportType, 1);
-		}*/
-
-	if (!askedReport1)
-		{
-		LogData("Sending IN: ", *ReportID, ReportType, ReportData, *ReportSize);
-		}
-
-//	FfbOnUsbData((uint8_t*) ReportData, *ReportSize);
-	return true;
-}
-
-
-static void SendStatusReport(uint8_t effectId, uint8_t status)
+bool GetNextReport(USB_JoystickReport_Data_t* const ReportData)
 	{
-	sPIDStatusPending = true;
-	sPIDStatus.effectBlockIndex = effectId;
-	sPIDStatus.status = status;
+	// This routine generates ever changing position and button values
+	// to make it easy to see whether the position reports are working
+	// or not.
+
+	bool           InputChanged     = true;
+
+	// "Read" the joystick
+	if (prev_joystick_data.buttons == 0)
+		prev_joystick_data.buttons = 0b01010101;
+	else
+		prev_joystick_data.buttons = prev_joystick_data.buttons << 1;
+
+	if (prev_joystick_data.position < 100)
+		prev_joystick_data.position++;
+	else
+		prev_joystick_data.position = -100;
+
+	/* Clear the report contents */
+	memset(ReportData, 0, sizeof(USB_JoystickReport_Data_t));
+
+	ReportData->reportId = 1;
+	ReportData->Button = prev_joystick_data.buttons;
+	ReportData->Y = prev_joystick_data.position;
+	ReportData->X = prev_joystick_data.position;
+
+	return InputChanged;
 	}
 
 
-volatile uint8_t effectCount = 0;
+/** Function to manage HID report generation and transmission to the host. */
+void HID_Task(void)
+	{
+	/* Device must be connected and configured for the task to run */
+	if (USB_DeviceState != DEVICE_STATE_Configured)
+	  return;
 
-/** HID class driver callback function for the processing of HID reports from the host.
- *
- *  \param[in] HIDInterfaceInfo  Pointer to the HID class interface configuration structure being referenced
- *  \param[in] ReportID    Report ID of the received report from the host
- *  \param[in] ReportType  The type of report that the host has sent, either HID_REPORT_ITEM_Out or HID_REPORT_ITEM_Feature
- *  \param[in] ReportData  Pointer to a buffer where the received report has been stored
- *  \param[in] ReportSize  Size in bytes of the received HID report
- */
-void CALLBACK_HID_Device_ProcessHIDReport(USB_ClassInfo_HID_Device_t* const HIDInterfaceInfo,
-                                          const uint8_t ReportID,
-                                          const uint8_t ReportType,
-                                          const void* ReportData,
-                                          const uint16_t ReportSize)
-{
-	// Host->Device reports
+	/* Select the Joystick Report Endpoint */
+	Endpoint_SelectEndpoint(JOYSTICK_EPNUM);
 
-	LogData("Received OUT:", ReportID, ReportType, ReportData, ReportSize);
-
-	uint8_t *data = (uint8_t*) ReportData;
-
-	if (ReportID == 0x0b)	// Device Control
+	/* Check to see if the host is ready for another packet */
+	if (Endpoint_IsINReady())
 		{
-		//	uint8_t effectBlockIndex;	// 7bits + MSB=ROM Flag
-		//	uint8_t	state; // bits 0=EffectPlaying, 1=EnableActuators, 2=SafetySwitch, 3=ActuatorPower
+		USB_JoystickReport_Data_t JoystickReportData;
 
-		if (data[0] == 0x04)	// Stop all effects
-			SendStatusReport(0x7f, 0b00001110);
-		else if (data[0] == 0x08)	// Reset
+		/* Create the next HID report to send to the host */
+		GetNextReport(&JoystickReportData);
+
+		/* Write Joystick Report Data */
+		Endpoint_Write_Stream_LE(&JoystickReportData, sizeof(JoystickReportData), NULL);
+
+		/* Finalize the stream transfer to send the last packet */
+		Endpoint_ClearIN();
+		}
+
+	// Receive FFB data
+	Endpoint_SelectEndpoint(FFB_EPNUM);
+
+	if (Endpoint_IsOUTReceived())
+		{
+		LEDs_SetAllLEDs(LEDS_ALL_LEDS);
+
+		uint8_t ffbdata[128];
+		uint16_t len = 0, tlen = 0;
+
+		// Read the FFB data packet from the endpoint
+		//Endpoint_Read_Stream_LE(&ffbdata, sizeof(ffbdata), &len);
+		uint8_t ErrorCode;
+		while ((ErrorCode = Endpoint_Read_Stream_LE(&ffbdata[len], sizeof(ffbdata) - len,
+                                              &tlen)) == ENDPOINT_RWSTREAM_IncompleteTransfer)
 			{
-			effectCount = 0;
-			SendStatusReport(0x7f, 0b00001110);
+			len += tlen;
+			tlen = 0;
+			}
+
+		len += tlen;
+
+		if (ErrorCode != ENDPOINT_RWSTREAM_NoError)
+			{
+			}
+
+
+		LogReport("Recived OUT:", OutReportSize, ffbdata, len);
+
+		LEDs_SetAllLEDs(LEDS_NO_LEDS);
+
+		// If the endpoint is now empty, clear the bank
+		if (!(Endpoint_BytesInEndpoint()))
+			{
+			// Clear the endpoint ready for new packet
+			Endpoint_ClearOUT();
 			}
 		}
-
-	else if (ReportID == 0x05)	// Set Constant Force
-		{
-		effectCount++;
-		SendStatusReport(effectCount, 0b00001111);
-		}
-
-	else if (ReportID == 0x0a)	// Effect Operation
-		{
-		if (data[1] == 0x01)	// Start effect
-			SendStatusReport(data[0], 0b00001111);
-		else if (data[1] == 0x02)	// Start Solo
-			SendStatusReport(data[0], 0b00001111);
-		else if (data[1] == 0x03)	// Stop
-			SendStatusReport(data[0], 0b00001111);
-		}
 	}
+
 }}}
