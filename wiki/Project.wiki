@@ -7,9 +7,9 @@ This page contains the project's plan and status. It lists what is still missing
 
 == What works ==
 
-Now, an version of 3DP-Vert exist that works as a proof of concept for controlling force feedback on the Sidewinder FFP joystick. It can enable "FFB mode" on the joystick. It also allows starting a constant force effect (to left) and to stopping it by pressing joystick buttons. To free the UART TX-pin for sending the MIDI data to the joystick 3DP-Vert's button pins were moved to B0..B3 pins in the AVR.
+LUFA based 3DPVert for FFP as a generic force feedback joystick is running and receiving effects data from the host. It can also enable FFB mode on the joystick at startup. However, this prototype has some issues (see Issue-Tracking). The prototype also has AD-conversion pins setup up for attaching four additional analog controls (potentiometers) (Seen as Rx, Ry and Rudder - a slider - that combines two pedals).
 
-Also, a LUFA based prototype for a generic force feedback joystick is running and receiving effects data from the host. However, this prototype has some issues (see Issue-Tracking).
+Also, a version of 3DP-Vert exist that works as a proof of concept for controlling force feedback on the Sidewinder FFP joystick. It can enable "FFB mode" on the joystick. It also allows starting a constant force effect (to left) and to stopping it by pressing joystick buttons. To free the UART TX-pin for sending the MIDI data to the joystick 3DP-Vert's button pins were moved to B0..B3 pins in the AVR.
 
 == To Do ==
 
@@ -28,8 +28,6 @@ The descriptor should allow at least:
   * Periodic parameters (include frequency and amplitude, exclude Phase)
   * Ramp and envelope parameters for attack and fade
 
-Note: AVR megas that do not have hardware USB (ie. ones that need to use the software USB) seem to have limitation on how large the HID descriptor can be and FFB seems to grow the descriptor size over those limits. However, Tweeny 2.0(++) has no such limit since they have hardware USB.
-
 === Converting USB data to MIDI ===
 
 C-code for converting the FFB USB reports from PC must be converted to MIDI data.
@@ -43,3 +41,5 @@ Although many effect parameters have already been discovered from the MIDI data,
 === Integrate with 3DPVert ===
 
 Integrate with 3DPVert to have full blown game port FFB Sidewinder joystick to USB.
+
+=> DONE, but supports only Teensy2 and FFP for now.
