@@ -36,6 +36,10 @@ For example, uploading an effect (a constant force towards right direction) and 
 		0xf7			-- end of effect data
 		0xb5 0x20 0x02	-- play effect ID 2
 
+The checksum in SysEx-command is calculated from the data after the "0x00 0x01 0x0a 0x01"-part i.e. from the 5th byte in the SysEx-command data. Checksum is calculated by
+  * sum all bytes
+  * divide by 0x80 and take the reminder
+  * subtract the reminder from 0x80 => checksum
 
 ==Effects==
 
