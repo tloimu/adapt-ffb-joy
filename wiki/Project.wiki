@@ -7,9 +7,11 @@ This page contains the project's plan and status. It lists what is still missing
 
 == What works ==
 
-LUFA based 3DPVert for FFP as a generic force feedback joystick is running and receiving effects data from the host. It can also enable FFB mode on the joystick at startup. However, this prototype has some issues (see Issue-Tracking). The prototype also has AD-conversion pins setup up for attaching four additional analog controls (potentiometers) (Seen as Rx, Ry and Rudder - a slider - that combines two pedals).
+LUFA based 3DPVert as a generic USB Human Interface Device with Physical Interface Device parts for force feedback. It is plug-n-play for Windows (i.e. doesn't need any non-built-in drivers) as it conforms to use Windows' PID built-in driver. Works all the way from 32-bit Windows XP to 64-bit Windows 7.
 
-Also, a version of 3DP-Vert exist that works as a proof of concept for controlling force feedback on the Sidewinder FFP joystick. It can enable "FFB mode" on the joystick. It also allows starting a constant force effect (to left) and to stopping it by pressing joystick buttons. To free the UART TX-pin for sending the MIDI data to the joystick 3DP-Vert's button pins were moved to B0..B3 pins in the AVR.
+All effect types work using e.g. FEdit. Also, modifying effects already playing on-fly work almost as much as FFP allows them. There is an issue with ramps still and they are effectively played as constant forces. There are also some glitches in some of the effects when using in a game like IL2 (WWII combat flight simulator).
+
+To free the UART TX-pin for sending the MIDI data to the joystick 3DP-Vert's button pins were moved to B0..B3 pins in the AVR. The prototype also has AD-conversion pins setup up for attaching four additional analog controls (potentiometers). They are seen as Rx, Ry and a slider - that combines two pedals (potentiometers).
 
 == To Do ==
 
@@ -17,16 +19,16 @@ Things still to do.
 
 === USB HID Descriptor ==
 
-A fully working USB HID descriptor with force feedback parts is needed. HID specs on physical devices is to be consulted (see USB.org's doc on HID PID). Only partially working has now been achieved. See Wiki page *USBFfbHid* for details.
+There should be a fully working USB HID descriptor with force feedback parts that is based on USB PID standards as well the flavor supported by Windows' built-in PID-driver.
 
-There are a few example in web how to do this with a joystick-like HID. It is preferrable to have a HID descriptor that is based on the 3DPVert-project's Sidewinder ForceFeedback Pro, but that would add the FFB parts to it.
-
-The descriptor should allow at least:
+The final descriptor should allow at least:
   * Constant, Sine and Triangle waveforms
   * Duration parameter
   * Direction parameter(s)
   * Periodic parameters (include frequency and amplitude, exclude Phase)
   * Ramp and envelope parameters for attack and fade
+
+==> Done. Some optimization and simplification can be done here.
 
 === Converting USB data to MIDI ===
 
@@ -34,12 +36,16 @@ C-code for converting the FFB USB reports from PC must be converted to MIDI data
 
 The code should be as plain C as possible to be easily (or with no effort) be included to different projects on various hardware platforms. It also simplifies unit testing during development since the same code could be ran on a PC too.
 
+==> Mostly done. Some glitches still exist. Also, optimization could be done to minimize effects of effect data handling that might lower the frame rate of the joystick's positional data.
+
 === Finalize the MIDI data analysis on effect parameters ===
 
 Although many effect parameters have already been discovered from the MIDI data, a full description of all parameters and their data types is still missing.
+
+==> Mostly done. Some number format conversions for few fields need to be checked.
 
 === Integrate with 3DPVert ===
 
 Integrate with 3DPVert to have full blown game port FFB Sidewinder joystick to USB.
 
-=> DONE, but supports only Teensy2 and FFP for now.
+=> Done. Supports only Teensy2 and FFP for now.
