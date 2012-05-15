@@ -49,3 +49,15 @@ Although many effect parameters have already been discovered from the MIDI data,
 Integrate with 3DPVert to have full blown game port FFB Sidewinder joystick to USB.
 
 => Done. Supports only Teensy2 and FFP for now.
+
+=== Debugging and configuration of adapter via USB serial ===
+
+A preliminary version is in subversion now. The adapt-ffb-joy has now two USB interfaces, one for the HID joystick and another for a virtual serial port.
+
+Efficiency of the implementation however is not at par at the moment and settings cannot be saved to eeprom and are not loaded from eeprom at startup.
+
+List of configuration options include:
+ - enable/disable debugging
+ - enable/disable an effect by ID (done)
+ - enable/disable effects of certain type
+ - combine two ADC inputs into a single USB slider or not (e.g. rudder)
