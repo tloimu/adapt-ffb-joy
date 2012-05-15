@@ -48,20 +48,6 @@ typedef struct
 	uint16_t Button;
 	uint8_t Hat;
 	} USB_JoystickReport_Data_t;
-/*
-typedef struct
-	{
-	// Joystick Input Report FF2
-	uint8_t	reportId;	// =1
-	int16_t  X;
-	int16_t  Y;
-	int8_t  Rz;
-	uint8_t  Throttle;
-	uint8_t Hat;
-	uint8_t Button;
-	uint8_t pad[4];
-	} USB_JoystickReport_Data_t;
-*/
 
 // Functions that form the inferface from the generic parts of the code
 // to joystick model specific parts.

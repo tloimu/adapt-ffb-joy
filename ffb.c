@@ -37,11 +37,7 @@
 
 #define USART_BAUD 31250
 
-// If defined, MIDI OUT is only used for debugging text and actual MIDI data is discarded
-#define ENABLE_MIDI_OUT
-
 // Effect management (???? WAS 40)
-#define MAX_EFFECTS 20
 volatile uint8_t nextEID = 2;	// FFP effect indexes starts from 2 (yes, we waste memory for two effects...)
 volatile USB_FFBReport_PIDStatus_Input_Data_t pidState;	// For holding device status flags
 
@@ -57,6 +53,7 @@ const uint16_t USB_DURATION_INFINITE = 0x7FFF;
 const uint16_t MIDI_DURATION_INFINITE = 0;
 
 // Bit-masks for effect states
+const uint8_t MEffectState_Free = 0x00;
 const uint8_t MEffectState_Allocated = 0x01;
 const uint8_t MEffectState_Playing = 0x02;
 const uint8_t MEffectState_SentToJoystick = 0x04;
@@ -71,6 +68,8 @@ typedef struct {
 	} TEffectState;
 
 static volatile TEffectState gEffectStates[MAX_EFFECTS+1];	// one for each effect (array index 0 is unused to simplify things)
+
+volatile TDisabledEffectTypes gDisabledEffects;
 
 // All effects data start with this data
 static uint8_t sCommonEffectHeader[] = {0x00, 0x01, 0x0a, 0x01};
@@ -280,7 +279,8 @@ void FfbOnUsbData(uint8_t *data, uint16_t len)
 	// Parse incoming USB data and convert it to MIDI data for the joystick
 	LEDs_SetAllLEDs(LEDS_ALL_LEDS);
 
-//	LogReport("Recived OUT:", OutReportSize, data, len);
+	if (gDebugMode & DEBUG_DETAIL)
+		LogReport("<= FfbData:", OutReportSize, data, len);
 
 	switch (data[0])	// reportID
 		{
@@ -348,8 +348,8 @@ uint8_t usbToMidiEffectType[] = { 0x12,0x06,0x05,0x02,0x08,0x0A,0x0B,0x0D,0x0E,0
 
 void FfbOnCreateNewEffect(USB_FFBReport_CreateNewEffect_Feature_Data_t* inData, USB_FFBReport_PIDBlockLoad_Feature_Data_t *outData)
 	{
-	LogText("Create New Effect");
-	LogBinary(inData, sizeof(USB_FFBReport_CreateNewEffect_Feature_Data_t));
+	LogTextP(PSTR("Create New Effect:\n  "));
+	LogBinaryLf(inData, sizeof(USB_FFBReport_CreateNewEffect_Feature_Data_t));
 
 /*
 USB effect data:
@@ -401,26 +401,49 @@ USB effect data:
 		}
 
 	outData->ramPoolAvailable = 0xFFFF;	// =0 or 0xFFFF - don't really know what this is used for?
-	LogData("    => Sent Data:", outData->reportId, outData, sizeof(USB_FFBReport_PIDBlockLoad_Feature_Data_t));
+
+	LogDataLf("  => Usb:", outData->reportId, outData, sizeof(USB_FFBReport_PIDBlockLoad_Feature_Data_t));
 	}
 
 
 void FfbOnPIDPool(USB_FFBReport_PIDPool_Feature_Data_t *data)
 	{
+	LogTextP(PSTR("GetReport PID Pool Feature:\n  => Usb:"));
+
 	FreeAllEffects();
 
 	data->reportId = 7;
 	data->ramPoolSize = 0xFFFF;
 	data->maxSimultaneousEffects = 0x0A;	// FFP supports playing up to 10 simultaneous effects
 	data->memoryManagement = 3;
+
+	LogBinaryLf(data, sizeof(USB_FFBReport_PIDPool_Feature_Data_t));
 	}
 
 
 void FfbHandle_SetEffect(USB_FFBReport_SetEffect_Output_Data_t *data)
 	{
-	LogText("Set Effect");
-	LogBinary(data, sizeof(USB_FFBReport_SetEffect_Output_Data_t));
+	uint8_t eid = data->effectBlockIndex;
 
+	LogTextP(PSTR("Set Effect:"));
+	LogBinaryLf(data, sizeof(USB_FFBReport_SetEffect_Output_Data_t));
+	LogTextP(PSTR("  id  =")); LogBinaryLf(&eid, sizeof(eid));
+	LogTextP(PSTR("  type=")); LogBinaryLf(&data->effectType, sizeof(data->effectType));
+	LogTextP(PSTR("  gain=")); LogBinaryLf(&data->gain, sizeof(data->gain));
+	LogTextP(PSTR("  dura=")); LogBinaryLf(&data->duration, sizeof(data->duration));
+	if (data->enableAxis)
+		{
+		LogTextP(PSTR("  X=")); LogBinaryLf(&data->directionX, sizeof(data->directionX));
+		LogTextP(PSTR("  Y=")); LogBinaryLf(&data->directionY, sizeof(data->directionY));
+		}
+	if (data->triggerRepeatInterval)
+		{
+		LogTextP(PSTR("  repeat=")); LogBinaryLf(&data->triggerRepeatInterval, sizeof(data->triggerRepeatInterval));
+		}
+	if (data->triggerButton)
+		{
+		LogTextP(PSTR("  button=")); LogBinaryLf(&data->triggerButton, sizeof(data->triggerButton));
+		}
 
 /*
 USB effect data:
@@ -433,11 +456,9 @@ USB effect data:
 	uint8_t	gain;	// 0..255	 (physical 0..10000)
 	uint8_t	triggerButton;	// button ID (0..8)
 	uint8_t	enableAxis; // bits: 0=X, 1=Y, 2=DirectionEnable
-	uint8_t	directionX;	// angle (0=0 .. 255=360deg)
-	uint8_t	directionY;	// angle (0=0 .. 255=360deg)
+	uint8_t	directionX;	// angle (0=0 .. 180=0..360deg)
+	uint8_t	directionY;	// angle (0=0 .. 180=0..360deg)
 */
-
-	uint8_t eid = data->effectBlockIndex;
 
 	// Fill in data that is common to all effect MIDI data types
 	volatile FFP_MIDI_Effect_Basic *common_midi_data = &gEffectStates[eid].data;
@@ -496,7 +517,7 @@ USB effect data:
 
 			// Convert direction
 			uint16_t usbdir = data->directionX;
-			usbdir = (usbdir * 90) / 64;
+			usbdir = usbdir * 2;
 			uint16_t dir = (usbdir & 0x7F) + ( (usbdir & 0x0180) << 1 );
 			midi_data->direction = dir;
 
@@ -520,7 +541,7 @@ USB effect data:
 			bool gain_changed = (gEffectStates[eid].usb_gain != data->gain);
 			if (gain_changed)
 				{
-//				LogText("  New gain:");
+//				LogTextP(PSTR("  New gain:"));
 //				LogBinary(&data->gain, 1);
 
 				gEffectStates[eid].usb_gain = data->gain;
@@ -631,8 +652,17 @@ USB effect data:
 
 void FfbHandle_SetEnvelope(USB_FFBReport_SetEnvelope_Output_Data_t *data)
 	{
-	LogText("Set Envelope");
-	LogBinary(data, sizeof(USB_FFBReport_SetEnvelope_Output_Data_t));
+	uint8_t eid = data->effectBlockIndex;
+	volatile TEffectState *effect = &gEffectStates[eid];
+
+	LogTextP(PSTR("Set Envelope:"));
+	LogBinaryLf(data, sizeof(USB_FFBReport_SetEnvelope_Output_Data_t));
+	LogTextP(PSTR("  id    =")); LogBinaryLf(&eid, sizeof(eid));
+	LogTextP(PSTR("  attack=")); LogBinaryLf(&data->attackLevel, sizeof(data->attackLevel));
+	LogTextP(PSTR("  fade  =")); LogBinaryLf(&data->fadeLevel, sizeof(data->fadeLevel));
+	LogTextP(PSTR("  attackTime=")); LogBinaryLf(&data->attackTime, sizeof(data->attackTime));
+	LogTextP(PSTR("  fadeTime  =")); LogBinaryLf(&data->fadeTime, sizeof(data->fadeTime));
+//	FlushDebugBuffer();
 
 /*
 USB effect data:
@@ -661,8 +691,6 @@ MIDI effect data:
 	uint16_t param1;	// Constant: positive=7f 00, negative=01 01, Other effects: 01 01
 	uint16_t param2;	// Constant: 00 00, Other effects 01 01
 */
-	uint8_t eid = data->effectBlockIndex;
-	volatile TEffectState *effect = &gEffectStates[eid];
 	volatile FFP_MIDI_Effect_Basic *midi_data = &effect->data;
 
 	effect->usb_attackLevel = data->attackLevel;
@@ -691,8 +719,17 @@ MIDI effect data:
 
 void FfbHandle_SetCondition(USB_FFBReport_SetCondition_Output_Data_t *data)
 	{
-	LogText("Set Condition");
-	LogBinary(data, sizeof(USB_FFBReport_SetCondition_Output_Data_t));
+	uint8_t eid = data->effectBlockIndex;
+	volatile FFP_MIDI_Effect_Basic *common_midi_data = &gEffectStates[eid].data;
+
+	LogTextP(PSTR("Set Condition:"));
+	LogBinaryLf(data, sizeof(USB_FFBReport_SetCondition_Output_Data_t));
+	LogTextP(PSTR("  id   =")); LogBinaryLf(&eid, sizeof(eid));
+	LogTextP(PSTR("  block =")); LogBinaryLf(&data->parameterBlockOffset, sizeof(data->parameterBlockOffset));
+	LogTextP(PSTR("  offset=")); LogBinaryLf(&data->cpOffset, sizeof(data->cpOffset));
+	LogTextP(PSTR("  coeff+=")); LogBinaryLf(&data->positiveCoefficient, sizeof(data->positiveCoefficient));
+//	FlushDebugBuffer();
+
 /*
 USB effect data:
 	uint8_t	effectBlockIndex;	// 1..40
@@ -706,9 +743,6 @@ MIDI effect data:
 	uint16_t offsetAxis0; // not in friction
 	uint16_t offsetAxis1; // not in friction
 */
-	uint8_t eid = data->effectBlockIndex;
-
-	volatile FFP_MIDI_Effect_Basic *common_midi_data = &gEffectStates[eid].data;
 
 	switch (common_midi_data->waveForm)
 		{	
@@ -776,8 +810,16 @@ MIDI effect data:
 
 void FfbHandle_SetPeriodic(USB_FFBReport_SetPeriodic_Output_Data_t *data)
 	{
-	LogText("Set Periodic");
-	LogBinary(data, sizeof(USB_FFBReport_SetPeriodic_Output_Data_t));
+	uint8_t eid = data->effectBlockIndex;
+
+	LogTextP(PSTR("Set Periodic:"));
+	LogBinaryLf(data, sizeof(USB_FFBReport_SetPeriodic_Output_Data_t));
+	LogTextP(PSTR("  id=")); LogBinaryLf(&eid, sizeof(eid));
+	LogTextP(PSTR("  magnitude=")); LogBinaryLf(&data->magnitude, sizeof(data->magnitude));
+	LogTextP(PSTR("  offset   =")); LogBinaryLf(&data->offset, sizeof(data->offset));
+	LogTextP(PSTR("  phase    =")); LogBinaryLf(&data->phase, sizeof(data->phase));
+	LogTextP(PSTR("  period   =")); LogBinaryLf(&data->period, sizeof(data->period));
+//	FlushDebugBuffer();
 
 /*
 USB effect data:
@@ -792,7 +834,6 @@ MIDI effect data:
 
 	Offset values other than zero do not work and thus it is ignored on FFP
 */
-	uint8_t eid = data->effectBlockIndex;
 	volatile TEffectState *effect = &gEffectStates[eid];
 	volatile FFP_MIDI_Effect_Basic *midi_data = &effect->data;
 
@@ -843,8 +884,14 @@ MIDI effect data:
 
 void FfbHandle_SetConstantForce(USB_FFBReport_SetConstantForce_Output_Data_t *data)
 	{
-	LogText("Set Constant Force");
-	LogBinary(data, sizeof(USB_FFBReport_SetConstantForce_Output_Data_t));
+	uint8_t eid = data->effectBlockIndex;
+	volatile TEffectState *effect_data = &gEffectStates[eid];
+
+	LogTextP(PSTR("Set Constant Force:"));
+	LogBinaryLf(data, sizeof(USB_FFBReport_SetConstantForce_Output_Data_t));
+	LogTextP(PSTR("  id=")); LogBinaryLf(&eid, sizeof(eid));
+	LogTextP(PSTR("  magnitude=")); LogBinaryLf(&data->magnitude, sizeof(data->magnitude));
+//	FlushDebugBuffer();
 /*
 USB data:
 	uint8_t	reportId;	// =5
@@ -869,8 +916,6 @@ MIDI effect data:
 	uint16_t param1;	// Constant: positive=7f 00, negative=01 01, Other effects: 01 01
 	uint16_t param2;	// Constant: 00 00, Other effects 01 01
 */
-	uint8_t eid = data->effectBlockIndex;
-	volatile TEffectState *effect_data = &gEffectStates[eid];
 	volatile FFP_MIDI_Effect_Basic *midi_data = &effect_data->data;
 
 	effect_data->usb_magnitude = data->magnitude;
@@ -897,8 +942,14 @@ MIDI effect data:
 
 void FfbHandle_SetRampForce(USB_FFBReport_SetRampForce_Output_Data_t *data)
 	{
-	LogText("Set Ramp Force");
-	LogBinary(data, sizeof(USB_FFBReport_SetRampForce_Output_Data_t));
+	uint8_t eid = data->effectBlockIndex;
+
+	LogTextP(PSTR("Set Ramp Force:"));
+	LogBinaryLf(data, sizeof(USB_FFBReport_SetRampForce_Output_Data_t));
+	LogTextP(PSTR("  id=")); LogBinaryLf(&eid, sizeof(eid));
+	LogTextP(PSTR("  start=")); LogBinaryLf(&data->start, sizeof(data->start));
+	LogTextP(PSTR("  end  =")); LogBinaryLf(&data->end, sizeof(data->end));
+//	FlushDebugBuffer();
 
 	// FFP supports only ramp up from MIN to MAX and ramp down from MAX to MIN?
 /*
@@ -909,7 +960,6 @@ USB effect data:
 	int8_t	end;
 */
 	
-	uint8_t eid = data->effectBlockIndex;
 	volatile FFP_MIDI_Effect_Basic *midi_data = &gEffectStates[eid].data;
 	if (data->start < 0)
 		midi_data->param1 = 0x0100 | (-(data->start+1));
@@ -929,61 +979,73 @@ USB effect data:
 
 void FfbHandle_SetCustomForceData(USB_FFBReport_SetCustomForceData_Output_Data_t *data)
 	{
-	LogText("Set Custom Force Data");
+	LogTextLf("Set Custom Force Data");
 	}
 
 
 
 void FfbHandle_SetDownloadForceSample(USB_FFBReport_SetDownloadForceSample_Output_Data_t *data)
 	{
-	LogText("Set Download Force Sample");
+	LogTextLf("Set Download Force Sample");
 	}
 
 
 
 void FfbHandle_EffectOperation(USB_FFBReport_EffectOperation_Output_Data_t *data)
 	{
-	LogText("Effect Operation");
-//	LogBinary(data, sizeof(USB_FFBReport_EffectOperation_Output_Data_t));
-
 	uint8_t eid = data->effectBlockIndex;
+
+	LogTextP(PSTR("Effect Operation:"));
+	LogBinary(&eid, 1);
+//	LogBinary(data, sizeof(USB_FFBReport_EffectOperation_Output_Data_t));
 
 	if (eid == 0xFF)
 		eid = 0x7F;	// All effects
 
 	if (data->operation == 1)
 		{	// Start
-		LogText("  Start");
+		LogTextLfP(PSTR(" Start"));
+		LogBinaryLf(&eid, 1);
+
 		StartEffect(data->effectBlockIndex);
-		FfbSendEffectOper(eid, 0x20);
+		if (!gDisabledEffects.effectId[eid])
+			FfbSendEffectOper(eid, 0x20);
 		}
 	else if (data->operation == 2)
 		{	// StartSolo
-		LogText("  StartSolo");
+		LogTextLfP(PSTR(" StartSolo"));
+
 		// Stop all first
 		StopAllEffects();
-		FfbSendEffectOper(0x7F, 0x30);
+		if (!gDisabledEffects.effectId[eid])
+			FfbSendEffectOper(0x7F, 0x30);
 
 		// Then start the given effect
 		StartEffect(data->effectBlockIndex);
-		FfbSendEffectOper(0x7F, 0x20);
+
+		if (!gDisabledEffects.effectId[eid])
+			FfbSendEffectOper(0x7F, 0x20);
 		}
 	else if (data->operation == 3)
 		{	// Stop
-		LogText("  Stop");
+		LogTextLfP(PSTR(" Stop"));
+
 		StopEffect(data->effectBlockIndex);
-		FfbSendEffectOper(eid, 0x30);
+
+		if (!gDisabledEffects.effectId[eid])
+			FfbSendEffectOper(eid, 0x30);
 		}
+	else
+		LogBinaryLf(&data->operation, sizeof(data->operation));
 	}
 
 
 void FfbHandle_BlockFree(USB_FFBReport_BlockFree_Output_Data_t *data)
 	{
-	LogText("Block Free");
-	
 	uint8_t eid = data->effectBlockIndex;
 
-	LogBinary(&eid, 1);
+	LogTextP(PSTR("Block Free: "));
+	LogBinaryLf(&eid, 1);
 
 	if (eid == 0xFF)
 		{	// all effects
@@ -1060,7 +1122,7 @@ uint8_t enableAutoCenterFfbData_3[] =
 
 void FfbHandle_DeviceControl(USB_FFBReport_DeviceControl_Output_Data_t *data)
 	{
-	LogText("Device Control");
+	LogTextP(PSTR("Device Control: "));
 
 	uint8_t control = data->control;
 	// 1=Enable Actuators, 2=Disable Actuators, 3=Stop All Effects, 4=Reset, 5=Pause, 6=Continue
@@ -1077,17 +1139,18 @@ void FfbHandle_DeviceControl(USB_FFBReport_DeviceControl_Output_Data_t *data)
 
 	if (control == 0x01)
 		{
-		LogText("  Disable Actuators");
+		LogTextLf("Disable Actuators");
 		pidState.status = (pidState.status & 0xFE);
 		}
 	else if (control == 0x02)
 		{
-		LogText("  Enable Actuators");
+		LogTextLf("Enable Actuators");
 		pidState.status |= 1 << 2;
 		}
 	else if (control == 0x03)
 		{
 		// Stop all effects (e.g. FFB-application to foreground)
+		LogTextLf("Stop All Effects");
 
 		// Disable auto-center spring and stop all effects
 //	???? The below would take too long?
@@ -1097,10 +1160,10 @@ void FfbHandle_DeviceControl(USB_FFBReport_DeviceControl_Output_Data_t *data)
 		FfbSendData(disableAutoCenterFfbData_2, sizeof(disableAutoCenterFfbData_2));
 
 		pidState.effectBlockIndex = 0;
-		LogText("  Stop All Effects");
 		}
 	else if (control == 0x04)
 		{
+		LogTextLf("Reset");
 		// Reset (e.g. FFB-application out of focus)
 		// Enable auto-center spring and stop all effects
 		FfbSendData(enableAutoCenterFfbData_1, sizeof(enableAutoCenterFfbData_1));
@@ -1111,20 +1174,19 @@ void FfbHandle_DeviceControl(USB_FFBReport_DeviceControl_Output_Data_t *data)
 		FfbSendData(enableAutoCenterFfbData_3, sizeof(enableAutoCenterFfbData_3));*/
 		FreeAllEffects();
 //		FfbSendEffectOper(0x7F, 0x10);	// remove all
-		LogText("  Reset");
 		}
 	else if (control == 0x05)
 		{
-		LogText("  Pause");
+		LogTextLf("Pause");
 		}
 	else if (control == 0x06)
 		{
-		LogText("  Continue");
+		LogTextLf("Continue");
 		}
 	else if (control  & (0xFF-0x3F))
 		{
-		LogText("  Other");
-		LogBinary(&data->control, 1);
+		LogTextP(PSTR("Other "));
+		LogBinaryLf(&data->control, 1);
 		}
 
 	// Send response
@@ -1136,15 +1198,15 @@ void FfbHandle_DeviceControl(USB_FFBReport_DeviceControl_Output_Data_t *data)
 void
 FfbHandle_DeviceGain(USB_FFBReport_DeviceGain_Output_Data_t *data)
 	{
-	LogText("Device Gain");
-//	LogBinary(&data->gain, 1);
+	LogTextP(PSTR("Device Gain: "));
+	LogBinaryLf(&data->gain, 1);
 	}
 
 
 void
 FfbHandle_SetCustomForce(USB_FFBReport_SetCustomForce_Output_Data_t *data)
 	{
-	LogText("Set Custom Force");
+	LogTextLf("Set Custom Force");
 //	LogBinary(&data, sizeof(USB_FFBReport_SetCustomForce_Output_Data_t));
 	}
 
@@ -1337,6 +1399,9 @@ void FfbSendEnableInterrupts(void)
 // Initializes and enables MIDI to joystick using USART1 TX
 void FfbInitMidi()
 	{
+	// Initialize some states
+	memset((void*) &gDisabledEffects, 0, sizeof(gDisabledEffects));
+
 	// Check TX-pin (PD3) settings
 	DDRD = DDRD | 0b00001000;
 	
@@ -1362,17 +1427,20 @@ void FfbInitMidi()
 
 void FfbSendByte(uint8_t data)
 	{
-#ifdef ENABLE_MIDI_OUT
 	// Wait if a byte is being transmitted
 	while((UCSR1A & (1<<UDRE1)) == 0);
 	// Transmit data
 	UDR1 = data;
-#endif
 	}
 
 
 void FfbSendData(uint8_t *data, uint16_t len)
 	{
+	if (gDebugMode)
+		{
+		LogTextP(PSTR(" => Midi:")); LogBinaryLf(data, len);
+		}
+
 	uint16_t i = 0;
 	for (i = 0; i < len; i++)
 		FfbSendByte(data[i]);
@@ -1386,6 +1454,61 @@ void FfbSendEnable()
 // Send "disable FFB" to joystick
 void FfbSendDisable()
 	{
+	}
+
+/*
+typedef struct {
+	uint8_t state;	// see constants <MEffectState_*>
+	uint16_t usb_duration, usb_fadeTime;	// used to calculate fadeTime to MIDI, since in USB it is given as time difference from the end while in MIDI it is given as time from start
+	// These are used to calculate effects of USB gain to MIDI data
+	uint8_t usb_gain, usb_offset, usb_attackLevel, usb_fadeLevel;
+	uint8_t usb_magnitude;
+	FFP_MIDI_Effect_Basic	data;	// For FFP, this is enough for all types of effects - cast for other effect types when necessary
+	} TEffectState;
+
+const uint8_t MEffectState_Allocated = 0x01;
+const uint8_t MEffectState_Playing = 0x02;
+const uint8_t MEffectState_SentToJoystick = 0x04;
+*/
+uint8_t FfbDebugListEffects(uint8_t *index)
+	{
+	if (*index == 0)
+		*index = 2;
+
+//	if (*index >= nextEID)
+	if (*index >= MAX_EFFECTS)
+		return 0;
+
+	TEffectState *e = (TEffectState*) &gEffectStates[*index];
+
+	LogBinary(index, 1);
+	if (e->state == MEffectState_Allocated)
+		LogTextP(PSTR(" Allocated"));
+	else if (e->state == MEffectState_Playing)
+		LogTextP(PSTR(" Playing\n"));
+	else if (e->state == MEffectState_SentToJoystick)
+		LogTextP(PSTR(" Sent"));
+	else
+		LogTextP(PSTR(" Free"));
+
+	if (gDisabledEffects.effectId[*index])
+		LogTextP(PSTR(" (Disabled)\n"));
+	else
+		LogTextP(PSTR(" (Enabled)\n"));
+
+	if (e->state)
+		{
+		LogTextP(PSTR("  duration="));
+		LogBinary(&e->usb_duration, 2);
+		LogTextP(PSTR("\n  fadeTime="));
+		LogBinary(&e->usb_fadeTime, 2);
+		LogTextP(PSTR("\n  gain="));
+		LogBinary(&e->usb_gain, 1);
+		}
+
+	*index = *index + 1;
+
+	return 1;
 	}
 
 /*
@@ -1405,3 +1528,36 @@ ISR(USART1_UDRE_vect)
 }
 */
 
+
+void FfbEnableSprings(uint8_t inEnable)
+	{
+	gDisabledEffects.springs = !inEnable;
+	}
+
+void FfbEnableConstants(uint8_t inEnable)
+	{
+	gDisabledEffects.constants = !inEnable;
+	}
+
+void FfbEnableTriangles(uint8_t inEnable)
+	{
+	gDisabledEffects.triangles = !inEnable;
+	}
+
+void FfbEnableSines(uint8_t inEnable)
+	{
+	gDisabledEffects.sines = !inEnable;
+	}
+
+void FfbEnableEffectId(uint8_t inId, uint8_t inEnable)
+	{
+	gDisabledEffects.effectId[inId] = !inEnable;
+
+	if (gEffectStates[inId].state == MEffectState_Playing)
+		{
+		LogTextP(PSTR("Stop manual:"));
+		LogBinaryLf(&inId, 1);
+		StopEffect(inId);
+		FfbSendEffectOper(inId, 0x30);
+		}
+	}

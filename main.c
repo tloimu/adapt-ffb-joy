@@ -37,6 +37,26 @@
 #include "usb_hid.h"
 #include "debug.h"
 
+#include "Descriptors.h"
+
+void CDC1_Task(void);
+
+/** Contains the current baud rate and other settings of the first virtual serial port. While this demo does not use
+ *  the physical USART and thus does not use these settings, they must still be retained and returned to the host
+ *  upon request or the host will assume the device is non-functional.
+ *
+ *  These values are set by the host via a class-specific request, however they are not required to be used accurately.
+ *  It is possible to completely ignore these value or use other settings as the host is completely unaware of the physical
+ *  serial link characteristics and instead sends and receives data in endpoint streams.
+ */
+
+
+
+static CDC_LineEncoding_t LineEncoding1 = { .BaudRateBPS = 0,
+                                            .CharFormat  = CDC_LINEENCODING_OneStopBit,
+                                            .ParityType  = CDC_PARITY_None,
+                                            .DataBits    = 8                            };
+
 
 /** Main program entry point. This routine configures the hardware required by the application, then
  *  enters a loop to run the application tasks in sequence.
@@ -59,7 +79,13 @@ int main(void)
 			}
 
 		HID_Task();
+		FlushDebugBuffer();
+
+		CDC1_Task();
+		FlushDebugBuffer();
+
 		USB_USBTask();
+		FlushDebugBuffer();
 		}
 	}
 
@@ -113,6 +139,18 @@ void EVENT_USB_Device_ConfigurationChanged(void)
 
 	ConfigSuccess &= Endpoint_ConfigureEndpoint(FFB_EPNUM, EP_TYPE_INTERRUPT, ENDPOINT_DIR_OUT,
 	                                            FFB_EPSIZE, ENDPOINT_BANK_SINGLE);
+#ifdef ENABLE_JOYSTICK_SERIAL
+	/* Setup first CDC Interface's Endpoints */
+	ConfigSuccess &= Endpoint_ConfigureEndpoint(CDC1_TX_EPNUM, EP_TYPE_BULK, ENDPOINT_DIR_IN,
+	                                            CDC_TXRX_EPSIZE, ENDPOINT_BANK_SINGLE);
+	ConfigSuccess &= Endpoint_ConfigureEndpoint(CDC1_RX_EPNUM, EP_TYPE_BULK, ENDPOINT_DIR_OUT,
+	                                            CDC_TXRX_EPSIZE, ENDPOINT_BANK_SINGLE);
+	ConfigSuccess &= Endpoint_ConfigureEndpoint(CDC1_NOTIFICATION_EPNUM, EP_TYPE_INTERRUPT, ENDPOINT_DIR_IN,
+	                                            CDC_NOTIFICATION_EPSIZE, ENDPOINT_BANK_SINGLE);
+#endif // ENABLE_JOYSTICK_SERIAL
+
+	/* Reset line encoding baud rates so that the host knows to send new values */
+	LineEncoding1.BaudRateBPS = 0;
 
 	/* Indicate endpoint configuration success or failure */
 	LEDs_SetAllLEDs(ConfigSuccess ? LEDS_NO_LEDS : LEDS_ALL_LEDS);
@@ -140,22 +178,34 @@ void EVENT_USB_Device_ControlRequest(void)
 		uint16_t 	wLength
 	*/
 
-	LogText("Control Request (value, index, all data): ");
-	LogBinary(&USB_ControlRequest.wValue, 2);
-	LogBinary(&USB_ControlRequest.wIndex, 2);
-	LogBinary(&USB_ControlRequest, sizeof(USB_ControlRequest));
+#ifdef ENABLE_JOYSTICK_SERIAL
+	/* Determine which interface's Line Coding data is being set from the wIndex parameter */
+	void* LineEncodingData = (USB_ControlRequest.wIndex == 1) ? &LineEncoding1 : NULL;
+#endif // ENABLE_JOYSTICK_SERIAL
+
+	if (gDebugMode & DEBUG_DETAIL)
+		{
+		LogTextP(PSTR("CtrlReq(val,idx,req):"));
+		LogBinary(&USB_ControlRequest.wValue, 2);
+		LogBinary(&USB_ControlRequest.wIndex, 2);
+		LogBinaryLf(&USB_ControlRequest.bRequest, 1);
+		//LogBinary(&USB_ControlRequest, sizeof(USB_ControlRequest));
+		}
 
 	switch (USB_ControlRequest.bRequest)
 		{
+		// Joystick stuff
+
 		case HID_REQ_GetReport:
-			LogText("  = GetReport");
+			if (gDebugMode & DEBUG_DETAIL)
+				LogTextLf("GetReport");
 			if (USB_ControlRequest.bmRequestType == (REQDIR_DEVICETOHOST | REQTYPE_CLASS | REQREC_INTERFACE))
 				{
 				LEDs_SetAllLEDs(LEDS_ALL_LEDS);
 
 				/*if (USB_ControlRequest.wValue == 0x0306)
 					{	// Feature 2: PID Block Load Feature Report
-					LogText("GetReport PID Block Load Feature");
+					LogTextP(PSTR("GetReport PID Block Load Feature"));
 					_delay_us(500);	// Windows needs this delay to register the below feature report correctly
 					USB_FFBReport_PIDBlockLoad_Feature_Data_t featureData;
 					FfbOnPIDBlockLoad(&featureData);
@@ -168,7 +218,6 @@ void EVENT_USB_Device_ControlRequest(void)
 				else */
 				if (USB_ControlRequest.wValue == 0x0307)
 					{	// Feature 3: PID Pool Feature Report
-					LogText("GetReport PID Pool Feature");
 					USB_FFBReport_PIDPool_Feature_Data_t featureData;
 					FfbOnPIDPool(&featureData);
 
@@ -197,10 +246,10 @@ void EVENT_USB_Device_ControlRequest(void)
 				LEDs_SetAllLEDs(LEDS_NO_LEDS);
 				}
 
-
 			break;
 		case HID_REQ_SetReport:
-			LogText("  = SetReport");
+			if (gDebugMode & DEBUG_DETAIL)
+				LogTextLf("SetReport");
 
 			if (USB_ControlRequest.bmRequestType == (REQDIR_HOSTTODEVICE | REQTYPE_CLASS | REQREC_INTERFACE))
 				{
@@ -251,8 +300,55 @@ void EVENT_USB_Device_ControlRequest(void)
 				LEDs_SetAllLEDs(LEDS_NO_LEDS);
 				}
 			break;
+
+#ifdef ENABLE_JOYSTICK_SERIAL
+
+			// Serial stuff
+		case CDC_REQ_GetLineEncoding:
+			if (gDebugMode & DEBUG_DETAIL)
+				LogTextP(PSTR("  = GetLineEncoding"));
+
+			if (USB_ControlRequest.bmRequestType == (REQDIR_DEVICETOHOST | REQTYPE_CLASS | REQREC_INTERFACE))
+			{
+				Endpoint_ClearSETUP();
+
+				// Write the line coding data to the control endpoint
+				Endpoint_Write_Control_Stream_LE(LineEncodingData, sizeof(CDC_LineEncoding_t));
+				Endpoint_ClearOUT();
+			}
+
+			break;
+		case CDC_REQ_SetLineEncoding:
+			if (gDebugMode & DEBUG_DETAIL)
+				LogTextP(PSTR("  = SetLineEncoding"));
+
+			if (USB_ControlRequest.bmRequestType == (REQDIR_HOSTTODEVICE | REQTYPE_CLASS | REQREC_INTERFACE))
+			{
+				Endpoint_ClearSETUP();
+
+				// Read the line coding data in from the host into the global struct
+				Endpoint_Read_Control_Stream_LE(LineEncodingData, sizeof(CDC_LineEncoding_t));
+				Endpoint_ClearIN();
+			}
+
+			break;
+		case CDC_REQ_SetControlLineState:
+			if (gDebugMode & DEBUG_DETAIL)
+				LogTextP(PSTR("  = SetControlLineState"));
+
+			if (USB_ControlRequest.bmRequestType == (REQDIR_HOSTTODEVICE | REQTYPE_CLASS | REQREC_INTERFACE))
+			{
+				Endpoint_ClearSETUP();
+				Endpoint_ClearStatusStage();
+			}
+
+			break;
+#endif // ENABLE_JOYSTICK_SERIAL
 		}
+
 	}
+
+
 
 
 /** Function to manage HID report generation and transmission to the host. */
@@ -289,6 +385,7 @@ void HID_Task(void)
 
 		uint8_t out_ffbdata[64];	// enough for any single OUT-report
 		uint8_t total_bytes_read = 0;
+
 		while (Endpoint_BytesInEndpoint() && total_bytes_read < 64)
 			{
 			uint16_t out_wait_report_bytes = 0, out_report_data_read = 0;
@@ -310,7 +407,7 @@ void HID_Task(void)
 				LEDs_SetAllLEDs(LEDS_ALL_LEDS);
 				_delay_ms(100); }
 				}
-//			LogText("Starting to read new report (reportId, bytesToWait)");
+//			LogTextP(PSTR("Starting to read new report (reportId, bytesToWait)"));
 //			LogBinary(out_ffbdata, 1);
 //			LogBinary((uint8_t*) &out_wait_report_bytes, 2);
 
@@ -331,4 +428,150 @@ void HID_Task(void)
 		Endpoint_ClearOUT();
 		}
 	}
+
+
+
+// -------------------------------
+// Serial stuff
+
+/** Function to manage CDC data transmission and reception to and from the host for the first CDC interface, which sends joystick
+ *  movements to the host as ASCII strings.
+ */
+
+
+void CDC1_Task(void)
+	{
+#ifdef ENABLE_JOYSTICK_SERIAL
+
+	/* Device must be connected and configured for the task to run */
+	if (USB_DeviceState != DEVICE_STATE_Configured)
+		return;
+
+	FlushDebugBuffer();
+
+	/* Select the Serial Rx Endpoint */
+	Endpoint_SelectEndpoint(CDC1_RX_EPNUM);
+
+	char data[32];
+	uint16_t len = 0;
+
+	/* Throw away any received data from the host */
+	if (Endpoint_IsOUTReceived())
+		{
+		LEDs_SetAllLEDs(LEDS_ALL_LEDS);
+		_delay_ms(50);
+		LEDs_SetAllLEDs(LEDS_NO_LEDS);
+		_delay_ms(50);
+
+		while (Endpoint_BytesInEndpoint() && len < 32)
+			{
+			// Read the reportID from the package to determine amount of data to expect next
+			while (Endpoint_Read_Stream_LE(&data[len++], 1, NULL)
+					 == ENDPOINT_RWSTREAM_IncompleteTransfer)
+				{	// busy loop until the first byte is read out
+				}
+			}
+
+		Endpoint_ClearOUT();
+
+		uint8_t i = 0;
+		switch (data[0])
+			{
+			case 'l':
+				LogTextP(PSTR("Effects:\n"));
+				while (FfbDebugListEffects(&i))
+					FlushDebugBuffer();
+
+				if (gDisabledEffects.springs)
+					LogTextP(PSTR(" Springs disabled\n"));
+				if (gDisabledEffects.constants)
+					LogTextP(PSTR(" Constants disabled\n"));
+				if (gDisabledEffects.triangles)
+					LogTextP(PSTR(" Triangles disabled\n"));
+				if (gDisabledEffects.sines)
+					LogTextP(PSTR(" Sines disabled\n"));
+				break;
+			case 's':
+				FfbEnableSprings(false);
+				break;
+			case 'S':
+				FfbEnableSprings(true);
+				break;
+			case 'c':
+				FfbEnableConstants(false);
+				break;
+			case 'C':
+				FfbEnableConstants(true);
+				break;
+			case 't':
+				FfbEnableTriangles(false);
+				break;
+			case 'T':
+				FfbEnableTriangles(true);
+				break;
+
+			case '1':
+			case '2':
+			case '3':
+			case '4':
+			case '5':
+			case '6':
+			case '7':
+			case '8':
+			case '9':
+				FfbEnableEffectId(data[0] - '0', false);
+				break;
+			case '!':
+				FfbEnableEffectId(1, true);
+				break;
+			case '\"':
+				FfbEnableEffectId(2, true);
+				break;
+			case '#':
+				FfbEnableEffectId(3, true);
+				break;
+			case '¤':
+				FfbEnableEffectId(4, true);
+				break;
+			case '%':
+				FfbEnableEffectId(5, true);
+				break;
+			case '&':
+				FfbEnableEffectId(6, true);
+				break;
+			case '/':
+				FfbEnableEffectId(7, true);
+				break;
+			case '(':
+				FfbEnableEffectId(8, true);
+				break;
+			case ')':
+				FfbEnableEffectId(9, true);
+				break;
+
+			case 'm':
+				gDebugMode = gDebugMode & (~DEBUG_TO_MIDI);
+				break;
+			case 'M':
+				gDebugMode |= DEBUG_TO_MIDI;
+				break;
+
+			case 'u':
+				gDebugMode = gDebugMode & (~DEBUG_TO_USB);
+				break;
+			case 'U':
+				gDebugMode |= DEBUG_TO_USB;
+				break;
+
+			case 'd':
+				gDebugMode = gDebugMode & (~DEBUG_DETAIL);
+				break;
+			case 'D':
+				gDebugMode |= DEBUG_DETAIL;
+				break;
+			}
+		}
+#endif
+	}
+
 

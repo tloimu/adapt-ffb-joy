@@ -39,6 +39,8 @@
 #include "usb_hid.h"
 #include "debug.h"
 
+//#define USE_FAKE_JOYSTICK
+
 const uint8_t INPUT_REPORTID_ALL = 0xFF;
 
 // Code from 3DPVert begins-->
@@ -147,16 +149,52 @@ static volatile AddedControls_ADC_t added_controls_adc;
 static volatile JoystickData prev_joystick_data;
 static volatile uint8_t ADC_is_ready = 0;
 
+
+
 int Joystick_CreateInputReport(uint8_t inReportId, USB_JoystickReport_Data_t* const outReportData)
 	{
 	// Read the data from the FFP-joystick
 
 	int InputChanged = 1;	// ???? TODO: check for actual changes to avoid unnecessary input reports
 
+#ifndef USE_FAKE_JOYSTICK
 	// Code from 3DPVert begins-->
 	SetTMPS( 0, 64 ) ;		// Set T0 prescaler to / 64 for query
 	getdata();
 
+	// -------------------------------------------------------------------------------
+	// *******************************************************************************
+	// 	Decode the raw FFP/PP data and store it into sw_report
+	// 
+	//  Input:
+	// 	Pointer to start of packet to copy
+	// 
+	// 	FFP/PP data packet structure
+	// 	============================
+	// 
+	// 	44444444 33333333 33222222 22221111 11111100 00000000
+	// 	76543210 98765432 10987654 32109876 54321098 76543210
+	// 	-------0 -------1 -------2 -------3 -------4 -------5
+	// 	ppHHHHRR RRRRTTTT TTTYYYYY YYYYYXXX XXXXXXXB BBBBBBBB
+	// 	  321054 32106543 21098765 43210987 65432109 87654321
+	// 
+	// 	USB report data structure
+	// 	=========================
+	// 
+	// 	-------0 -------1 -------2 -------3 -------4 -------5
+	// 	XXXXXXXX YYYYYYXX HHHHYYYY BBRRRRRR TBBBBBBB 00TTTTTT
+	// 	76543210 54321098 32109876 21543210 09876543   654321
+	// 
+	// -------------------------------------------------------------------------------
+
+	// Copy the data to the USB report
+	// <--- Code from 3DPVert ends
+#else
+	memset(sw_report, 0, sizeof(sw_report));
+#endif
+
+	// ???? This could be done more directly by modifying the 3DPVert code
+	// ???? that generates its own USB report to the abovementioned format.
 	// Here we read the additional analog controls in
 	// rotation for each AD-channel at a time.
 	//
@@ -199,37 +237,8 @@ int Joystick_CreateInputReport(uint8_t inReportId, USB_JoystickReport_Data_t* co
 		ADCSRA|=(1<<ADSC);
 		}
 
-	// -------------------------------------------------------------------------------
-	// *******************************************************************************
-	// 	Decode the raw FFP/PP data and store it into sw_report
-	// 
-	//  Input:
-	// 	Pointer to start of packet to copy
-	// 
-	// 	FFP/PP data packet structure
-	// 	============================
-	// 
-	// 	44444444 33333333 33222222 22221111 11111100 00000000
-	// 	76543210 98765432 10987654 32109876 54321098 76543210
-	// 	-------0 -------1 -------2 -------3 -------4 -------5
-	// 	ppHHHHRR RRRRTTTT TTTYYYYY YYYYYXXX XXXXXXXB BBBBBBBB
-	// 	  321054 32106543 21098765 43210987 65432109 87654321
-	// 
-	// 	USB report data structure
-	// 	=========================
-	// 
-	// 	-------0 -------1 -------2 -------3 -------4 -------5
-	// 	XXXXXXXX YYYYYYXX HHHHYYYY BBRRRRRR TBBBBBBB 00TTTTTT
-	// 	76543210 54321098 32109876 21543210 09876543   654321
-	// 
-	// -------------------------------------------------------------------------------
 
-	// Copy the data to the USB report
-	// <--- Code from 3DPVert ends
-
-	// ???? This could be done more directly by modifying the 3DPVert code
-	// ???? that generates its own USB report to the abovementioned format.
-
+	// Convert the raw input data to USB report
 
 	outReportData->reportId = 1;	// Input report ID 1
 
