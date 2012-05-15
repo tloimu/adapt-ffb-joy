@@ -24,7 +24,7 @@
  *	================
  *
  *
- *	Pinout AT90USBX2
+ *	Pinout AT90USBX2 (out dated!)
  *	================
  *
  *	PB0	--	PC0	(XTAL2)	 PD0	Button1
@@ -42,13 +42,13 @@
  *	PB0	Button1		PD0	Button1	(INT)	PF0	--
  *	PB1	Button2		PD1	--				PF1	--
  *	PB2	Button3		PD2	--				PE2	--
- *	PB3	Button4		PD3	--
+ *	PB3	Button4		PD3	MIDI (out)
  *	PB4	X1 axis			PD4	--			PF4	--
  *	PB5	Y2 axis			PD5	--			PF5	--
  *	PB6	--	PC6	--	PD6	LED	PE6	--	PF6	--
  *	PB7	--	PC7	--	PD7	--			PF7	--
  *
- *	Pinout AT90USBX6
+ *	Pinout AT90USBX6 (out dated!)
  *	================
  *
  *	PA0	--	PB0	--	PC0	--	PD0	Button1	PE0	--	PF0	--

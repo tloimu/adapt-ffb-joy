@@ -32,18 +32,44 @@
 
 #include "main.h"
 
+// Method of debugging
+extern const uint8_t DEBUG_TO_NONE;
+extern const uint8_t DEBUG_TO_MIDI;
+extern const uint8_t DEBUG_TO_USB;
+extern const uint8_t DEBUG_DETAIL;
+
+extern volatile uint8_t gDebugMode;
+
+// If below are defined, code for respective debug target is included into build
+#define DEBUG_ENABLE_MIDI
+#define DEBUG_ENABLE_USB
+
+#define DEBUG_BUFFER_SIZE 512
+
 // Debugging utilities
+
+// The basic debug data sending method used by all other methods.
+// Implement this to send debug data to desired destination.
+void LogSendByte(uint8_t data);
 
 // Send out the given null terminated text
 void LogText(const char *text);
+void LogTextLf(const char *text);	// Adds linefeed
+void LogTextP(const char *text);	// From program memory
+void LogTextLfP(const char *text);	// From program memory, adds linefeed
 
 // Send out the given binary data
 void LogBinary(const void *data, uint16_t len);
+void LogBinaryLf(const void *data, uint16_t len);	// Adds linefeed
 
 // Send out data with a prefix of text and an integer
 void LogData(const char *text, uint8_t reportId, const void *data, uint16_t len);
+void LogDataLf(const char *text, uint8_t reportId, const void *data, uint16_t len);	// Adds linefeed
 
 // Log all reports found in the given data (may have one or more)
 void LogReport(const char *text, const uint16_t *reportSizeArray, uint8_t *data, uint16_t len);
+
+// Debugging utils for USB-serial debugging
+void FlushDebugBuffer(void);
 
 #endif // _DEBUG_H_

@@ -35,6 +35,8 @@
 #ifndef _DESCRIPTORS_H_
 #define _DESCRIPTORS_H_
 
+#define ENABLE_JOYSTICK_SERIAL
+
 	/* Includes: */
 		#include <LUFA/Drivers/USB/USB.h>
 
@@ -45,18 +47,41 @@
 		 *  application code, as the configuration descriptor contains several sub-descriptors which
 		 *  vary between devices, and which describe the device's usage to the host.
 		 */
+
 		typedef struct
 		{
 			USB_Descriptor_Configuration_Header_t Config;
 
 			// Joystick HID Interface
 			USB_Descriptor_Interface_t            HID_Interface;
+
+		// Joystick stuff
+
 			USB_HID_Descriptor_HID_t              HID_JoystickHID;
 			USB_Descriptor_Endpoint_t             HID_ReportOUTEndpoint;
 	        USB_Descriptor_Endpoint_t             HID_ReportINEndpoint;
+
+#ifdef ENABLE_JOYSTICK_SERIAL
+		// Serial stuff
+
+		// First CDC Control Interface
+		USB_Descriptor_Interface_Association_t   CDC1_IAD;
+		USB_Descriptor_Interface_t               CDC1_CCI_Interface;
+		USB_CDC_Descriptor_FunctionalHeader_t    CDC1_Functional_Header;
+		USB_CDC_Descriptor_FunctionalACM_t       CDC1_Functional_ACM;
+		USB_CDC_Descriptor_FunctionalUnion_t     CDC1_Functional_Union;
+		USB_Descriptor_Endpoint_t                CDC1_ManagementEndpoint;
+
+		// First CDC Data Interface
+		USB_Descriptor_Interface_t               CDC1_DCI_Interface;
+		USB_Descriptor_Endpoint_t                CDC1_DataOutEndpoint;
+		USB_Descriptor_Endpoint_t                CDC1_DataInEndpoint;
+#endif // ENABLE_JOYSTICK_SERIAL
+
 		} USB_Descriptor_Configuration_t;
 
-	/* Macros: */
+		// Joystick stuff
+
 		/** Endpoint number of the Joystick HID reporting IN endpoint. */
 		#define JOYSTICK_EPNUM            1
 
@@ -74,6 +99,18 @@
 
 		/** Size in bytes of the Joystick FFB HID reporting OUT endpoint. */
 		#define FFB_EPSIZE           64
+
+		// Serial device stuff
+
+		#define CDC1_TX_EPNUM	3
+		#define CDC1_RX_EPNUM	4
+		#define CDC1_NOTIFICATION_EPNUM        5
+
+		/** Size in bytes of the CDC device-to-host notification IN endpoints. */
+		#define CDC_NOTIFICATION_EPSIZE        8
+
+		/** Size in bytes of the CDC data IN and OUT endpoints. */
+		#define CDC_TXRX_EPSIZE                16
 
 	/* Function Prototypes: */
 		uint16_t CALLBACK_USB_GetDescriptor(const uint16_t wValue,

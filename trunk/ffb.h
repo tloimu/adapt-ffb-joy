@@ -35,6 +35,9 @@
  *  This mirrors the layout described to the host in the HID report descriptor, in Descriptors.c.
  */
 
+// Maximum number of parallel effects in memory
+#define MAX_EFFECTS 20
+
 // ---- Input
 
 typedef struct
@@ -262,4 +265,29 @@ void WaitMs(int ms);
 
 // Send raw data to the
 void FfbSendData(uint8_t *data, uint16_t len);
+
+// Debugging
+//	<index> should be pointer to an index variable whose value should be set to 0 to start iterating.
+//	Returns 0 when no more effects
+uint8_t FfbDebugListEffects(uint8_t *index);
+
+// Effect manipulations
+
+typedef struct 
+	{
+	uint8_t midi;	// disables all MIDI-traffic
+	uint8_t springs;
+	uint8_t constants;
+	uint8_t triangles;
+	uint8_t sines;
+	uint8_t effectId[MAX_EFFECTS];
+	} TDisabledEffectTypes;
+
+extern volatile TDisabledEffectTypes gDisabledEffects;
+
+void FfbEnableSprings(uint8_t inEnable);
+void FfbEnableConstants(uint8_t inEnable);
+void FfbEnableTriangles(uint8_t inEnable);
+void FfbEnableSines(uint8_t inEnable);
+void FfbEnableEffectId(uint8_t inId, uint8_t inEnable);
 
