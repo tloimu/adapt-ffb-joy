@@ -41,8 +41,8 @@ extern const uint8_t DEBUG_DETAIL;
 extern volatile uint8_t gDebugMode;
 
 // If below are defined, code for respective debug target is included into build
-#define DEBUG_ENABLE_MIDI
-#define DEBUG_ENABLE_USB
+//#define DEBUG_ENABLE_MIDI
+//#define DEBUG_ENABLE_USB
 
 #define DEBUG_BUFFER_SIZE 512
 

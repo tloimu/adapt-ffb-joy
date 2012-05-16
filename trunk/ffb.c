@@ -37,7 +37,7 @@
 
 #define USART_BAUD 31250
 
-// Effect management (???? WAS 40)
+// Effect management
 volatile uint8_t nextEID = 2;	// FFP effect indexes starts from 2 (yes, we waste memory for two effects...)
 volatile USB_FFBReport_PIDStatus_Input_Data_t pidState;	// For holding device status flags
 
@@ -403,6 +403,8 @@ USB effect data:
 	outData->ramPoolAvailable = 0xFFFF;	// =0 or 0xFFFF - don't really know what this is used for?
 
 	LogDataLf("  => Usb:", outData->reportId, outData, sizeof(USB_FFBReport_PIDBlockLoad_Feature_Data_t));
+
+	_delay_ms(5);
 	}
 
 
@@ -425,7 +427,7 @@ void FfbHandle_SetEffect(USB_FFBReport_SetEffect_Output_Data_t *data)
 	{
 	uint8_t eid = data->effectBlockIndex;
 
-	LogTextP(PSTR("Set Effect:"));
+/*	LogTextP(PSTR("Set Effect:"));
 	LogBinaryLf(data, sizeof(USB_FFBReport_SetEffect_Output_Data_t));
 	LogTextP(PSTR("  id  =")); LogBinaryLf(&eid, sizeof(eid));
 	LogTextP(PSTR("  type=")); LogBinaryLf(&data->effectType, sizeof(data->effectType));
@@ -444,6 +446,7 @@ void FfbHandle_SetEffect(USB_FFBReport_SetEffect_Output_Data_t *data)
 		{
 		LogTextP(PSTR("  button=")); LogBinaryLf(&data->triggerButton, sizeof(data->triggerButton));
 		}
+*/
 
 /*
 USB effect data:
@@ -573,7 +576,8 @@ USB effect data:
 					{
 					FfbSendModify(eid, 0x6C, midi_data->fadeLevel);	// might have changed due gain
 					FfbSendModify(eid, 0x64, midi_data->attackLevel);	// might have changed due gain
-					FfbSendModify(eid, 0x74, midi_data->magnitude);	// might have changed due gain
+					if (!is_periodic)
+						FfbSendModify(eid, 0x74, midi_data->magnitude);	// might have changed due gain
 					}
 				}
 			else
@@ -655,13 +659,14 @@ void FfbHandle_SetEnvelope(USB_FFBReport_SetEnvelope_Output_Data_t *data)
 	uint8_t eid = data->effectBlockIndex;
 	volatile TEffectState *effect = &gEffectStates[eid];
 
-	LogTextP(PSTR("Set Envelope:"));
+/*	LogTextP(PSTR("Set Envelope:"));
 	LogBinaryLf(data, sizeof(USB_FFBReport_SetEnvelope_Output_Data_t));
 	LogTextP(PSTR("  id    =")); LogBinaryLf(&eid, sizeof(eid));
 	LogTextP(PSTR("  attack=")); LogBinaryLf(&data->attackLevel, sizeof(data->attackLevel));
 	LogTextP(PSTR("  fade  =")); LogBinaryLf(&data->fadeLevel, sizeof(data->fadeLevel));
 	LogTextP(PSTR("  attackTime=")); LogBinaryLf(&data->attackTime, sizeof(data->attackTime));
 	LogTextP(PSTR("  fadeTime  =")); LogBinaryLf(&data->fadeTime, sizeof(data->fadeTime));
+*/
 //	FlushDebugBuffer();
 
 /*
@@ -722,12 +727,14 @@ void FfbHandle_SetCondition(USB_FFBReport_SetCondition_Output_Data_t *data)
 	uint8_t eid = data->effectBlockIndex;
 	volatile FFP_MIDI_Effect_Basic *common_midi_data = &gEffectStates[eid].data;
 
-	LogTextP(PSTR("Set Condition:"));
+
+/*	LogTextP(PSTR("Set Condition:"));
 	LogBinaryLf(data, sizeof(USB_FFBReport_SetCondition_Output_Data_t));
 	LogTextP(PSTR("  id   =")); LogBinaryLf(&eid, sizeof(eid));
 	LogTextP(PSTR("  block =")); LogBinaryLf(&data->parameterBlockOffset, sizeof(data->parameterBlockOffset));
 	LogTextP(PSTR("  offset=")); LogBinaryLf(&data->cpOffset, sizeof(data->cpOffset));
 	LogTextP(PSTR("  coeff+=")); LogBinaryLf(&data->positiveCoefficient, sizeof(data->positiveCoefficient));
+*/
 //	FlushDebugBuffer();
 
 /*
@@ -887,10 +894,11 @@ void FfbHandle_SetConstantForce(USB_FFBReport_SetConstantForce_Output_Data_t *da
 	uint8_t eid = data->effectBlockIndex;
 	volatile TEffectState *effect_data = &gEffectStates[eid];
 
-	LogTextP(PSTR("Set Constant Force:"));
+/*	LogTextP(PSTR("Set Constant Force:"));
 	LogBinaryLf(data, sizeof(USB_FFBReport_SetConstantForce_Output_Data_t));
 	LogTextP(PSTR("  id=")); LogBinaryLf(&eid, sizeof(eid));
 	LogTextP(PSTR("  magnitude=")); LogBinaryLf(&data->magnitude, sizeof(data->magnitude));
+*/
 //	FlushDebugBuffer();
 /*
 USB data:
@@ -995,7 +1003,7 @@ void FfbHandle_EffectOperation(USB_FFBReport_EffectOperation_Output_Data_t *data
 	{
 	uint8_t eid = data->effectBlockIndex;
 
-	LogTextP(PSTR("Effect Operation:"));
+//	LogTextP(PSTR("Effect Operation:"));
 	LogBinary(&eid, 1);
 //	LogBinary(data, sizeof(USB_FFBReport_EffectOperation_Output_Data_t));
 
@@ -1122,7 +1130,7 @@ uint8_t enableAutoCenterFfbData_3[] =
 
 void FfbHandle_DeviceControl(USB_FFBReport_DeviceControl_Output_Data_t *data)
 	{
-	LogTextP(PSTR("Device Control: "));
+//	LogTextP(PSTR("Device Control: "));
 
 	uint8_t control = data->control;
 	// 1=Enable Actuators, 2=Disable Actuators, 3=Stop All Effects, 4=Reset, 5=Pause, 6=Continue
@@ -1425,14 +1433,7 @@ void FfbInitMidi()
 	}
 
 
-void FfbSendByte(uint8_t data)
-	{
-	// Wait if a byte is being transmitted
-	while((UCSR1A & (1<<UDRE1)) == 0);
-	// Transmit data
-	UDR1 = data;
-	}
-
+void FfbSendByte(uint8_t data);
 
 void FfbSendData(uint8_t *data, uint16_t len)
 	{
@@ -1445,6 +1446,79 @@ void FfbSendData(uint8_t *data, uint16_t len)
 	for (i = 0; i < len; i++)
 		FfbSendByte(data[i]);
 	}
+
+// ----------------------------------------------
+// Ring buffer for sending MIDI data to joystick
+// ----------------------------------------------
+
+// Buffer for sending data to MIDI
+//#define MIDI_BUFFER_SIZE 128
+
+#ifndef MIDI_BUFFER_SIZE
+
+// Non-buffered MIDI
+void FfbSendByte(uint8_t data)
+	{
+	// Wait if a byte is being transmitted
+	while((UCSR1A & (1<<UDRE1)) == 0);
+	// Transmit data
+	UDR1 = data;
+	}
+
+#else
+
+// Buffered MIDI
+
+volatile uint8_t gMidiBuffer[MIDI_BUFFER_SIZE];
+volatile unit8_t *midi_buffer_head = gMidiBuffer;
+volatile unit8_t *midi_buffer_tail = gMidiBuffer;
+
+void FfbSendByte(uint8_t data)
+	{
+	cli();
+
+	*gMidiBufferHead++ = data;
+
+	if (gMidiBufferHead == gMidiBufferTail)
+		{	// Ouch - buffer overflown!
+
+		return;
+		}
+
+	if (gMidiBufferHead - gMidiBuffer >= MIDI_BUFFER_SIZE)
+		gMidiBufferHead = gMidiBuffer;
+
+	sei();
+	}
+
+
+ISR(USART1_UDRE_vect)
+	{
+	cli();
+
+	uint8_t i;
+
+	if (gMidiBufferHead == gMidiBufferTail)
+		{
+		// Buffer is empty, disable transmit interrupt
+		UCSR1B = (1<<TXCIE1) | (1<<TXEN1);
+		}
+	else 
+		{
+		i = gMidiBufferTail + 1;
+		if (i >= MIDI_BUFFER_SIZE) i = 0;
+		UDR1 = gMidiBuffer[i];
+		gMidiBufferTail = i;
+		}
+
+	sei();
+	}
+#endif // MIDI_BUFFER_SIZE
+
+// ----------------------------------------------
+// Debug and other settings
+// ----------------------------------------------
+
 
 // Send "enable FFB" to joystick
 void FfbSendEnable()
@@ -1470,6 +1544,7 @@ const uint8_t MEffectState_Allocated = 0x01;
 const uint8_t MEffectState_Playing = 0x02;
 const uint8_t MEffectState_SentToJoystick = 0x04;
 */
+
 uint8_t FfbDebugListEffects(uint8_t *index)
 	{
 	if (*index == 0)
@@ -1510,23 +1585,6 @@ uint8_t FfbDebugListEffects(uint8_t *index)
 
 	return 1;
 	}
-
-/*
-ISR(USART1_UDRE_vect)
-{
-	uint8_t i;
-
-	if (tx_buffer_head == tx_buffer_tail) {
-		// buffer is empty, disable transmit interrupt
-		UCSR1B = (1<<TXCIE1) | (1<<TXEN1);
-	} else {
-		i = tx_buffer_tail + 1;
-		if (i >= TX_BUFFER_SIZE) i = 0;
-		UDR1 = tx_buffer[i];
-		tx_buffer_tail = i;
-	}
-}
-*/
 
 
 void FfbEnableSprings(uint8_t inEnable)
