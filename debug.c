@@ -49,8 +49,7 @@ volatile uint16_t debug_buffer_used = 0;
 
 void LogSendData(uint8_t *data, uint16_t len)
 	{
-	_delay_us(300);
-
+	return;
 	uint16_t i = 0;
 	for (i = 0; i < len; i++)
 		{
@@ -68,6 +67,7 @@ void LogSendData(uint8_t *data, uint16_t len)
 
 void LogText(const char *text)
 	{
+	return;
 	while (1)
 		{
 		char c = *text++;
@@ -81,6 +81,7 @@ void LogText(const char *text)
 
 void LogTextLf(const char *text)
 	{
+	return;
 	LogText(text);
 	LogSendByte('\r');	// CR+LF
 	LogSendByte('\n');	// CR+LF
@@ -89,6 +90,7 @@ void LogTextLf(const char *text)
 
 void LogTextP(const char *text)
 	{
+	return;
 	while (1)
 		{
 		char c = pgm_read_byte(text++);
@@ -102,6 +104,7 @@ void LogTextP(const char *text)
 
 void LogTextLfP(const char *text)
 	{
+	return;
 	LogTextP(text);
 	LogSendByte('\r');	// CR+LF
 	LogSendByte('\n');	// CR+LF
@@ -110,6 +113,7 @@ void LogTextLfP(const char *text)
 
 void LogBinary(const void *data, uint16_t len)
 	{
+	return;
     uint8_t temp = (uint8_t) (len & 0xFF);
 	if (temp > 0)
 		{
@@ -119,6 +123,7 @@ void LogBinary(const void *data, uint16_t len)
 
 void LogBinaryLf(const void *data, uint16_t len)
 	{
+	return;
     uint8_t temp = (uint8_t) (len & 0xFF);
 	if (temp > 0)
 		{
@@ -130,6 +135,7 @@ void LogBinaryLf(const void *data, uint16_t len)
 
 void LogData(const char *text, uint8_t reportId, const void *data, uint16_t len)
 	{
+	return;
 	LogText(text);
 	LogBinary(&reportId, 1);
 	LogBinary(data, len);
@@ -137,6 +143,7 @@ void LogData(const char *text, uint8_t reportId, const void *data, uint16_t len)
 
 void LogDataLf(const char *text, uint8_t reportId, const void *data, uint16_t len)
 	{
+	return;
 	LogText(text);
 	LogBinary(&reportId, 1);
 	LogBinaryLf(data, len);
@@ -145,6 +152,7 @@ void LogDataLf(const char *text, uint8_t reportId, const void *data, uint16_t le
 // Log all reports found in the given data (may have one or more)
 void LogReport(const char *text, const uint16_t *reportSizeArray, uint8_t *data, uint16_t len)
 	{
+	return;
 	LogText(text);
 
 	uint8_t *p = data;
@@ -188,10 +196,10 @@ void LogSendByte(uint8_t data)
 		}
 	else
 		{
-		_delay_us(300);	// Gludge - FFP requires some delay when sending data to it at some point - find out where and remove this
+//		_delay_us(300);	// Gludge - FFP requires some delay when sending data to it at some point - find out where and remove this
 		}
 #else
-	_delay_us(300);	// Gludge - FFP requires some delay when sending data to it at some point - find out where and remove this
+//	_delay_us(300);	// Gludge - FFP requires some delay when sending data to it at some point - find out where and remove this
 #endif // DEBUG_ENABLE_MIDI
 	}
 

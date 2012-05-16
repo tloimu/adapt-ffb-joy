@@ -1074,17 +1074,17 @@ uint16_t CALLBACK_USB_GetDescriptor(const uint16_t wValue,
 	switch (DescriptorType)
 	{
 		case DTYPE_Device:
-			LogTextP(PSTR("GetDesc/Device:"));
+			//LogTextP(PSTR("GetDesc/Device:"));
 			Address = &DeviceDescriptor;
 			Size    = sizeof(USB_Descriptor_Device_t);
 			break;
 		case DTYPE_Configuration:
-			LogTextP(PSTR("GetDesc/Conf:"));
+			//LogTextP(PSTR("GetDesc/Conf:"));
 			Address = &ConfigurationDescriptor;
 			Size    = sizeof(USB_Descriptor_Configuration_t);
 			break;
 		case DTYPE_String:
-			LogTextP(PSTR("GetDesc/String:"));
+			//LogTextP(PSTR("GetDesc/String:"));
 			switch (DescriptorNumber)
 			{
 				case 0x00:
@@ -1103,19 +1103,19 @@ uint16_t CALLBACK_USB_GetDescriptor(const uint16_t wValue,
 
 			break;
 		case DTYPE_HID:
-			LogTextP(PSTR("GetDesc/HID:"));
+			//LogTextP(PSTR("GetDesc/HID:"));
 			Address = &ConfigurationDescriptor.HID_JoystickHID;
 			Size    = sizeof(USB_HID_Descriptor_HID_t);
 			break;
 		case DTYPE_Report:
-			LogTextP(PSTR("GetDesc/Report:"));
+			//LogTextP(PSTR("GetDesc/Report:"));
 			Address = &JoystickReport;
 			Size    = sizeof(JoystickReport);
 			break;
 
 #ifdef ENABLE_JOYSTICK_SERIAL
 		case DTYPE_Interface:
-			LogTextP(PSTR("GetDesc/Interface:"));
+			//LogTextP(PSTR("GetDesc/Interface:"));
 			Size    = sizeof(USB_Descriptor_Interface_t);
 			if (wIndex == 0)
 				Address = &ConfigurationDescriptor.HID_Interface;
