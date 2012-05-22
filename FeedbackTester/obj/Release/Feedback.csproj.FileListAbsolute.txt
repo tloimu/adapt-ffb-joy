@@ -1,0 +1,5 @@
+D:\Documents and Settings\Santiago\My Documents\adapt-ffb\FeedbackTester\bin\Release\Feedback.exe
+D:\Documents and Settings\Santiago\My Documents\adapt-ffb\FeedbackTester\obj\Release\ResolveAssemblyReference.cache
+D:\Documents and Settings\Santiago\My Documents\adapt-ffb\FeedbackTester\obj\Release\Feedback.frmMain.resources
+D:\Documents and Settings\Santiago\My Documents\adapt-ffb\FeedbackTester\obj\Release\Feedback.csproj.GenerateResource.Cache
+D:\Documents and Settings\Santiago\My Documents\adapt-ffb\FeedbackTester\obj\Release\Feedback.exe

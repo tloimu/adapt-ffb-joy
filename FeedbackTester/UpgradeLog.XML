@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?><?xml-stylesheet type='text/xsl' href='_UpgradeReport_Files/UpgradeReport.xslt'?><UpgradeLog>
+<Properties><Property Name="Solution" Value="Feedback">
+</Property><Property Name="Solution File" Value="D:\Program Files\Microsoft DirectX 9.0 SDK (Summer 2004)\Samples\Managed\DirectInput\Feedback\Feedback.sln">
+</Property><Property Name="Date" Value="Monday, May 21, 2012">
+</Property><Property Name="Time" Value="22:01 PM">
+</Property></Properties><Event ErrorLevel="0" Project="" Source="Feedback.sln" Description="File successfully backed up as D:\Program Files\Microsoft DirectX 9.0 SDK (Summer 2004)\Samples\Managed\DirectInput\Feedback\Backup\Feedback.sln">
+</Event><Event ErrorLevel="0" Project="Feedback" Source="Feedback.csproj" Description="Project file successfully backed up as D:\Program Files\Microsoft DirectX 9.0 SDK (Summer 2004)\Samples\Managed\DirectInput\Feedback\Backup\Feedback.csproj">
+</Event><Event ErrorLevel="1" Project="Feedback" Source="..\..\Common\AssemblyInfo.cs" Description="Backed up project may not build.  Project contains linked file: D:\Program Files\Microsoft DirectX 9.0 SDK (Summer 2004)\Samples\Managed\DirectInput\Feedback\Backup\Common\AssemblyInfo.cs">
+</Event><Event ErrorLevel="0" Project="Feedback" Source="..\..\Common\AssemblyInfo.cs" Description="File successfully backed up as D:\Program Files\Microsoft DirectX 9.0 SDK (Summer 2004)\Samples\Managed\DirectInput\Feedback\Backup\Common\AssemblyInfo.cs">
+</Event><Event ErrorLevel="0" Project="Feedback" Source="frmMain.cs" Description="File successfully backed up as D:\Program Files\Microsoft DirectX 9.0 SDK (Summer 2004)\Samples\Managed\DirectInput\Feedback\Backup\frmMain.cs">
+</Event><Event ErrorLevel="1" Project="Feedback" Source="..\..\Common\directx.ico" Description="Backed up project may not build.  Project contains linked file: D:\Program Files\Microsoft DirectX 9.0 SDK (Summer 2004)\Samples\Managed\DirectInput\Feedback\Backup\Common\directx.ico">
+</Event><Event ErrorLevel="0" Project="Feedback" Source="..\..\Common\directx.ico" Description="File successfully backed up as D:\Program Files\Microsoft DirectX 9.0 SDK (Summer 2004)\Samples\Managed\DirectInput\Feedback\Backup\Common\directx.ico">
+</Event><Event ErrorLevel="0" Project="Feedback" Source="frmMain.resx" Description="File successfully backed up as D:\Program Files\Microsoft DirectX 9.0 SDK (Summer 2004)\Samples\Managed\DirectInput\Feedback\Backup\frmMain.resx">
+</Event><Event ErrorLevel="0" Project="Feedback" Source="Feedback.csproj" Description="Project converted successfully">
+</Event><Event ErrorLevel="3" Project="Feedback" Source="Feedback.csproj" Description="Converted">
+</Event><Event ErrorLevel="0" Project="" Source="Feedback.sln" Description="Solution converted successfully">
+</Event><Event ErrorLevel="3" Project="" Source="Feedback.sln" Description="Converted">
+</Event><Event ErrorLevel="0" Project="Feedback" Source="Feedback.csproj" Description="Scan complete: Upgrade not required for project files.">
+</Event></UpgradeLog>

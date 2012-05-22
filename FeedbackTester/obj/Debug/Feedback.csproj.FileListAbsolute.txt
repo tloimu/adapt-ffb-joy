@@ -1,0 +1,14 @@
+D:\Program Files\Microsoft DirectX 9.0 SDK (Summer 2004)\Samples\Managed\DirectInput\Feedback\bin\Debug\Feedback.exe
+D:\Program Files\Microsoft DirectX 9.0 SDK (Summer 2004)\Samples\Managed\DirectInput\Feedback\bin\Debug\Feedback.pdb
+D:\Program Files\Microsoft DirectX 9.0 SDK (Summer 2004)\Samples\Managed\DirectInput\Feedback\obj\Debug\ResolveAssemblyReference.cache
+D:\Program Files\Microsoft DirectX 9.0 SDK (Summer 2004)\Samples\Managed\DirectInput\Feedback\obj\Debug\Feedback.frmMain.resources
+D:\Program Files\Microsoft DirectX 9.0 SDK (Summer 2004)\Samples\Managed\DirectInput\Feedback\obj\Debug\Feedback.csproj.GenerateResource.Cache
+D:\Program Files\Microsoft DirectX 9.0 SDK (Summer 2004)\Samples\Managed\DirectInput\Feedback\obj\Debug\Feedback.exe
+D:\Program Files\Microsoft DirectX 9.0 SDK (Summer 2004)\Samples\Managed\DirectInput\Feedback\obj\Debug\Feedback.pdb
+D:\Documents and Settings\Santiago\My Documents\adapt-ffb\FeedbackTester\obj\Debug\Feedback.exe
+D:\Documents and Settings\Santiago\My Documents\adapt-ffb\FeedbackTester\obj\Debug\Feedback.pdb
+D:\Documents and Settings\Santiago\My Documents\adapt-ffb\FeedbackTester\obj\Debug\ResolveAssemblyReference.cache
+D:\Documents and Settings\Santiago\My Documents\adapt-ffb\FeedbackTester\obj\Debug\Feedback.frmMain.resources
+D:\Documents and Settings\Santiago\My Documents\adapt-ffb\FeedbackTester\obj\Debug\Feedback.csproj.GenerateResource.Cache
+D:\Documents and Settings\Santiago\My Documents\adapt-ffb\FeedbackTester\bin\Debug\Feedback.exe
+D:\Documents and Settings\Santiago\My Documents\adapt-ffb\FeedbackTester\bin\Debug\Feedback.pdb
