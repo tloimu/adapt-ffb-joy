@@ -200,12 +200,12 @@ namespace Feedback
                         // Can't create a custom force without info from the hardware vendor, so skip this effect.
                         continue;
                     }
-                    else if (DInputHelper.GetTypeCode(ei.EffectType) == (int)EffectType.Periodic)
+                    /*else if (DInputHelper.GetTypeCode(ei.EffectType) == (int)EffectType.Periodic)
                     {
                         // This is to filter out any Periodic effects. There are known
                         // issues with Periodic effects that will be addressed post-developer preview.
                         continue;
-                    }
+                    }*/
                     else if (DInputHelper.GetTypeCode(ei.EffectType) == (int)EffectType.Hardware)
                     {
                         if ((ei.StaticParams & (int)EffectParameterFlags.TypeSpecificParams) != 0)
