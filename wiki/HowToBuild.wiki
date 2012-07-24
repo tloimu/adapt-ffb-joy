@@ -1,5 +1,5 @@
 #summary How To Build the Adapter
-#labels Phase-Deploy
+#labels Phase-Deploy,Featured
 
 = Introduction =
 
