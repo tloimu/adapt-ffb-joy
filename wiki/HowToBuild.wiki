@@ -35,3 +35,5 @@ In the absence of an actual circuit drawing, below are the pins to connect.
 Then you likely need the two 1nF capacitors between AVR pins PB4 and PB5 and ground.
 
 Then for extra trim pots connect PF4..PF7 for trim pot center connector and GND and Vcc for them. These are optional and are not required to be connected.
+
+http://adapt-ffb-joy.googlecode.com/files/adaptffbjoy-breadboard.jpg
