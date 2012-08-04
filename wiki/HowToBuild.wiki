@@ -18,11 +18,11 @@ and below is the full circuit diagram.
 
 http://adapt-ffb-joy.googlecode.com/files/adaptffbjoy-circuit.png
 
-The basic buildup is similar to [http://code.google.com/p/sw3dprousb 3DPVert] but there are some modifications to it.
+The basic buildup is similar to [http://code.google.com/p/sw3dprousb 3DPVert] but there are some additions and modifications to it.
 
 To free the UART TX-pin for sending the force feedback effect MIDI data to the joystick 3DP-Vert's button pins were moved to B0..B3 pins in the AVR. The prototype also has AD-conversion pins setup up for attaching four additional analog controls (potentiometers). They are seen as Rx, Ry and a slider - that combines two pedals (potentiometers).
 
-Below are the pins to connect.
+Below are the pins to connect for the joystick.
 
 || AVR || DB15 || Desc ||
 || PB0 || 2 || Button1 ||
@@ -38,6 +38,14 @@ Below are the pins to connect.
 
 Then you likely need the two 1nF capacitors between AVR pins PB4 and PB5 and ground. Some configurations work better without these two capacitors. For example, my breadboard setup worked only without them as seen in below picture.
 
-Then for extra trim pots connect PF4..PF7 for trim pot center connector and GND and Vcc for them. These are optional and are not required to be connected.
+Then for the extra trim pots, connect PF0, PF1, PF4 and PF5 to each trim pot's center connector and GND and Vcc on the ends. These trim pots are completely optional and are not required to be connected for joystick to work. They only provide additional axis on top of the Sidewinder's own four axis.
+
+|| AVR || Desc ||
+|| PF0 || Y-rotation axis (Ry) ||
+|| PF1 || X-rotation axis (Rx) ||
+|| PF4 || Pedal1 (Slider-axis) ||
+|| PF5 || Pedal2 (Slider-axis) ||
+
+The Pedal1 and Pedal2 are combined to form an axis called "Slider" for the joystick in Windows.
 
 http://adapt-ffb-joy.googlecode.com/files/adaptffbjoy-breadboard.jpg
