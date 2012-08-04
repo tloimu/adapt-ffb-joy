@@ -14,11 +14,15 @@ Parts you need
   * 220 Ohm resistors
   * 2 x 1 nF capacitors
 
+and below is the full circuit diagram.
+
+http://adapt-ffb-joy.googlecode.com/files/adaptffbjoy-circuit.png
+
 The basic buildup is similar to [http://code.google.com/p/sw3dprousb 3DPVert] but there are some modifications to it.
 
 To free the UART TX-pin for sending the force feedback effect MIDI data to the joystick 3DP-Vert's button pins were moved to B0..B3 pins in the AVR. The prototype also has AD-conversion pins setup up for attaching four additional analog controls (potentiometers). They are seen as Rx, Ry and a slider - that combines two pedals (potentiometers).
 
-In the absence of an actual circuit drawing, below are the pins to connect.
+Below are the pins to connect.
 
 || AVR || DB15 || Desc ||
 || PB0 || 2 || Button1 ||
@@ -32,7 +36,7 @@ In the absence of an actual circuit drawing, below are the pins to connect.
 || VCC || 1 || Vcc for joystick ||
 || GND || 4 || GND for joystick ||
 
-Then you likely need the two 1nF capacitors between AVR pins PB4 and PB5 and ground.
+Then you likely need the two 1nF capacitors between AVR pins PB4 and PB5 and ground. Some configurations work better without these two capacitors. For example, my breadboard setup worked only without them as seen in below picture.
 
 Then for extra trim pots connect PF4..PF7 for trim pot center connector and GND and Vcc for them. These are optional and are not required to be connected.
 
