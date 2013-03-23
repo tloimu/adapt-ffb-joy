@@ -18,7 +18,9 @@ and below is the full circuit diagram.
 
 http://adapt-ffb-joy.googlecode.com/files/adaptffbjoy-circuit.png
 
-The basic buildup is similar to [http://code.google.com/p/sw3dprousb 3DPVert] but there are some additions and modifications to it.
+The above circuit diagram is also available as TinyCad design file among the source code files.
+
+The basic buildup is similar to [http://code.google.com/p/sw3dprousb 3DPVert] but there are some additions and modifications to it to get the new features in.
 
 To free the UART TX-pin for sending the force feedback effect MIDI data to the joystick 3DP-Vert's button pins were moved to B0..B3 pins in the AVR. The prototype also has AD-conversion pins setup up for attaching four additional analog controls (potentiometers). They are seen as Rx, Ry and a slider - that combines two pedals (potentiometers).
 
