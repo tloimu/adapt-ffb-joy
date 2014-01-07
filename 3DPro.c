@@ -18,7 +18,6 @@
  *	================
  *	WARNING: This version has been heavily modified to only support
  *           Force Feedback Pro and ATmega32U4.
- *           Do not use except for testing purposes!
  *
  *             -- tloimu
  *	================
