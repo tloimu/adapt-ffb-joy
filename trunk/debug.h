@@ -34,15 +34,19 @@
 
 // Method of debugging
 extern const uint8_t DEBUG_TO_NONE;
-extern const uint8_t DEBUG_TO_MIDI;
+extern const uint8_t DEBUG_TO_UART;
 extern const uint8_t DEBUG_TO_USB;
 extern const uint8_t DEBUG_DETAIL;
 
 extern volatile uint8_t gDebugMode;
 
+// Returns true if debug settings contain all of the given attributes
+// (see above constants DEBUG_xxx).
+bool DoDebug(const uint8_t type);
+
 // If below are defined, code for respective debug target is included into build
-//#define DEBUG_ENABLE_MIDI
-//#define DEBUG_ENABLE_USB
+//#define DEBUG_ENABLE_UART
+#define DEBUG_ENABLE_USB
 
 #define DEBUG_BUFFER_SIZE 512
 
@@ -67,6 +71,7 @@ void LogData(const char *text, uint8_t reportId, const void *data, uint16_t len)
 void LogDataLf(const char *text, uint8_t reportId, const void *data, uint16_t len);	// Adds linefeed
 
 // Log all reports found in the given data (may have one or more)
+// The <text> must point to string in program memory.
 void LogReport(const char *text, const uint16_t *reportSizeArray, uint8_t *data, uint16_t len);
 
 // Debugging utils for USB-serial debugging

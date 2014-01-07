@@ -28,28 +28,29 @@
 */
 
 #include "debug.h"
-#include "ffb.h"
 
-const uint8_t DEBUG_TO_NONE = 0;
-const uint8_t DEBUG_TO_MIDI = 1;
-const uint8_t DEBUG_TO_USB = 2;
-const uint8_t DEBUG_DETAIL = 4;
+// Various debug target settings
+const uint8_t DEBUG_TO_NONE = 0; // Disable sending debug data
+const uint8_t DEBUG_TO_UART = 1; // Debug data sent to UART-out
+const uint8_t DEBUG_TO_USB = 2; // Debug data sent to USB COM-port - enables basic level debugging
+const uint8_t DEBUG_DETAIL = 4; // Include additional details to debug data
 
-volatile uint8_t gDebugMode = 2;
+// Controls whether debug data contains data as hexadecimal ascii instead of as raw binary
+#define DEBUG_DATA_AS_HEX
+
+volatile uint8_t gDebugMode = 0; // set this higher if debugging e.g. at startup is needed
 
 #ifdef DEBUG_ENABLE_USB
-
+// Internal buffer for sending debug data to USB COM-port
 volatile char debug_buffer[DEBUG_BUFFER_SIZE];
 volatile uint16_t debug_buffer_used = 0;
-
 #endif
-
-
-#define DEBUG_DATA_AS_HEX
 
 void LogSendData(uint8_t *data, uint16_t len)
 	{
-	return;
+	if (gDebugMode == DEBUG_TO_NONE)
+		return;
+
 	uint16_t i = 0;
 	for (i = 0; i < len; i++)
 		{
@@ -67,7 +68,9 @@ void LogSendData(uint8_t *data, uint16_t len)
 
 void LogText(const char *text)
 	{
-	return;
+	if (gDebugMode == DEBUG_TO_NONE)
+		return;
+
 	while (1)
 		{
 		char c = *text++;
@@ -81,7 +84,9 @@ void LogText(const char *text)
 
 void LogTextLf(const char *text)
 	{
-	return;
+	if (gDebugMode == DEBUG_TO_NONE)
+		return;
+
 	LogText(text);
 	LogSendByte('\r');	// CR+LF
 	LogSendByte('\n');	// CR+LF
@@ -90,7 +95,9 @@ void LogTextLf(const char *text)
 
 void LogTextP(const char *text)
 	{
-	return;
+	if (gDebugMode == DEBUG_TO_NONE)
+		return;
+
 	while (1)
 		{
 		char c = pgm_read_byte(text++);
@@ -104,7 +111,9 @@ void LogTextP(const char *text)
 
 void LogTextLfP(const char *text)
 	{
-	return;
+	if (gDebugMode == DEBUG_TO_NONE)
+		return;
+
 	LogTextP(text);
 	LogSendByte('\r');	// CR+LF
 	LogSendByte('\n');	// CR+LF
@@ -113,7 +122,9 @@ void LogTextLfP(const char *text)
 
 void LogBinary(const void *data, uint16_t len)
 	{
-	return;
+	if (gDebugMode == DEBUG_TO_NONE)
+		return;
+
     uint8_t temp = (uint8_t) (len & 0xFF);
 	if (temp > 0)
 		{
@@ -123,7 +134,9 @@ void LogBinary(const void *data, uint16_t len)
 
 void LogBinaryLf(const void *data, uint16_t len)
 	{
-	return;
+	if (gDebugMode == DEBUG_TO_NONE)
+		return;
+
     uint8_t temp = (uint8_t) (len & 0xFF);
 	if (temp > 0)
 		{
@@ -135,7 +148,9 @@ void LogBinaryLf(const void *data, uint16_t len)
 
 void LogData(const char *text, uint8_t reportId, const void *data, uint16_t len)
 	{
-	return;
+	if (gDebugMode == DEBUG_TO_NONE)
+		return;
+
 	LogText(text);
 	LogBinary(&reportId, 1);
 	LogBinary(data, len);
@@ -143,7 +158,9 @@ void LogData(const char *text, uint8_t reportId, const void *data, uint16_t len)
 
 void LogDataLf(const char *text, uint8_t reportId, const void *data, uint16_t len)
 	{
-	return;
+	if (gDebugMode == DEBUG_TO_NONE)
+		return;
+
 	LogText(text);
 	LogBinary(&reportId, 1);
 	LogBinaryLf(data, len);
@@ -152,8 +169,10 @@ void LogDataLf(const char *text, uint8_t reportId, const void *data, uint16_t le
 // Log all reports found in the given data (may have one or more)
 void LogReport(const char *text, const uint16_t *reportSizeArray, uint8_t *data, uint16_t len)
 	{
-	return;
-	LogText(text);
+	if (gDebugMode == DEBUG_TO_NONE)
+		return;
+
+	LogTextP(text);
 
 	uint8_t *p = data;
 
@@ -169,9 +188,14 @@ void LogReport(const char *text, const uint16_t *reportSizeArray, uint8_t *data,
 	LogSendByte('\n');	// CR+LF
 	}
 
+bool DoDebug(const uint8_t type)
+	{
+	return ((gDebugMode & type) == type);
+	}
 
-// --------------------
-
+// -------------------------------
+// Send debug data to/from buffer
+// to the chosen bus (USB or MIDI)
 
 void LogSendByte(uint8_t data)
 	{
@@ -186,21 +210,15 @@ void LogSendByte(uint8_t data)
 		}
 #endif
 
-#ifdef DEBUG_ENABLE_MIDI
-	if (gDebugMode & DEBUG_TO_MIDI)
+#ifdef DEBUG_ENABLE_UART
+	if (gDebugMode & DEBUG_TO_UART)
 		{
 		// Wait if a byte is being transmitted
 		while((UCSR1A & (1<<UDRE1)) == 0);
 
 		UDR1 = data;
 		}
-	else
-		{
-//		_delay_us(300);	// Gludge - FFP requires some delay when sending data to it at some point - find out where and remove this
-		}
-#else
-//	_delay_us(300);	// Gludge - FFP requires some delay when sending data to it at some point - find out where and remove this
-#endif // DEBUG_ENABLE_MIDI
+#endif // DEBUG_ENABLE_UART
 	}
 
 
