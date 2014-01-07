@@ -183,7 +183,7 @@ void EVENT_USB_Device_ControlRequest(void)
 	void* LineEncodingData = (USB_ControlRequest.wIndex == 1) ? &LineEncoding1 : NULL;
 #endif // ENABLE_JOYSTICK_SERIAL
 
-	if (gDebugMode & DEBUG_DETAIL)
+	if (DoDebug(DEBUG_DETAIL))
 		{
 		LogTextP(PSTR("CtrlReq(val,idx,req):"));
 		LogBinary(&USB_ControlRequest.wValue, 2);
@@ -197,7 +197,7 @@ void EVENT_USB_Device_ControlRequest(void)
 		// Joystick stuff
 
 		case HID_REQ_GetReport:
-			if (gDebugMode & DEBUG_DETAIL)
+			if (DoDebug(DEBUG_DETAIL))
 				LogTextLf("GetReport");
 			if (USB_ControlRequest.bmRequestType == (REQDIR_DEVICETOHOST | REQTYPE_CLASS | REQREC_INTERFACE))
 				{
@@ -248,7 +248,7 @@ void EVENT_USB_Device_ControlRequest(void)
 
 			break;
 		case HID_REQ_SetReport:
-			if (gDebugMode & DEBUG_DETAIL)
+			if (DoDebug(DEBUG_DETAIL))
 				LogTextLf("SetReport");
 
 			if (USB_ControlRequest.bmRequestType == (REQDIR_HOSTTODEVICE | REQTYPE_CLASS | REQREC_INTERFACE))
@@ -305,7 +305,7 @@ void EVENT_USB_Device_ControlRequest(void)
 
 			// Serial stuff
 		case CDC_REQ_GetLineEncoding:
-			if (gDebugMode & DEBUG_DETAIL)
+			if (DoDebug(DEBUG_DETAIL))
 				LogTextP(PSTR("  = GetLineEncoding"));
 
 			if (USB_ControlRequest.bmRequestType == (REQDIR_DEVICETOHOST | REQTYPE_CLASS | REQREC_INTERFACE))
@@ -319,7 +319,7 @@ void EVENT_USB_Device_ControlRequest(void)
 
 			break;
 		case CDC_REQ_SetLineEncoding:
-			if (gDebugMode & DEBUG_DETAIL)
+			if (DoDebug(DEBUG_DETAIL))
 				LogTextP(PSTR("  = SetLineEncoding"));
 
 			if (USB_ControlRequest.bmRequestType == (REQDIR_HOSTTODEVICE | REQTYPE_CLASS | REQREC_INTERFACE))
@@ -333,7 +333,7 @@ void EVENT_USB_Device_ControlRequest(void)
 
 			break;
 		case CDC_REQ_SetControlLineState:
-			if (gDebugMode & DEBUG_DETAIL)
+			if (DoDebug(DEBUG_DETAIL))
 				LogTextP(PSTR("  = SetControlLineState"));
 
 			if (USB_ControlRequest.bmRequestType == (REQDIR_HOSTTODEVICE | REQTYPE_CLASS | REQREC_INTERFACE))
@@ -434,15 +434,72 @@ void HID_Task(void)
 // -------------------------------
 // Serial stuff
 
-/** Function to manage CDC data transmission and reception to and from the host for the first CDC interface, which sends joystick
- *  movements to the host as ASCII strings.
- */
+/*	Function to manage CDC data transmission and reception to and from the host for the.
+	It is used for debugging and allows controlling the force feedback effects via
+	serial line too.
+	
+	The protocol is ASCII so that it can be used e.g. with regular terminal program.
+	The protocol towards the device is based on "messages". Each message start with
+	a letter (single byte) that designates the command. The following bytes depend on
+	command. Once a complete message is received, it is immediately executed. Some
+	messages contain only the command letter while others may have variable sized
+	parameter data following it. Spaces, tabs, enters and other non-alphanumeric input
+	is ignored.
+	
+	Commands:
+		"l"
+			List all effect info from the adapter/joystick. Sends info about each
+			effect index in the device (loaded or free).
+			
+		"d" 01 SETTING
+			Disable the given debug setting. Settings are cumulative:
+				01 = Send debug data to UART
+				02 = Send debug data to USB
+				04 = Include additional details to debug data
+				
+		"D" 01 SETTING
+			Enable the given debug setting.
+			
+		"t" 01 EFFECTTYPE
+			Disable all effects with type EFFECTTYPE. Currently supported effect types here are:
+				1 = Constant effects
+				2 = Sine effects
+				5 = Triangle effects
+				8 = Spring effects
+				
+		"T" 01 EFFECTTYPE
+			Enable all effects with type EFFECTTYPE. See Above.
+			
+		"e" 01 EFFECTID
+			Disable effect with ID EFFECTID. See also command "l".
+		
+		"E" 01 EFFECTID
+			Enable effect with ID EFFECTID. See also command "l".
+			
+		"m" LENGTH ...data...
+			Send given data directly to joystick's MIDI channel. LENGTH is the number of
+			bytes in the data.
+			
+			e.g. "m 03 A5 7F 00" will send bytes "A5 7F 00" as binary to joystick.
+			
+		"u" LENGTH ...data...
+			Process the given data as if it came as a force feedback report via USB.
+			LENGTH is the number of bytes in the data.
+			
+			e.g. "u 02 0D FF" will send bytes "0D FF" as binary to adapter's FFB data
+			processing. This example would trigger DeviceGain-report (id=0x0D) with one
+			byte parameter 0xFF.
+*/
 
+
+#if !defined ENABLE_JOYSTICK_SERIAL
+void CDC1_Task(void)  {}
+#else
+
+void ProcessDataFromCOMSerial(char data);
 
 void CDC1_Task(void)
 	{
-#ifdef ENABLE_JOYSTICK_SERIAL
-
 	/* Device must be connected and configured for the task to run */
 	if (USB_DeviceState != DEVICE_STATE_Configured)
 		return;
@@ -452,18 +509,15 @@ void CDC1_Task(void)
 	/* Select the Serial Rx Endpoint */
 	Endpoint_SelectEndpoint(CDC1_RX_EPNUM);
 
-	char data[32];
+	char data[128];
 	uint16_t len = 0;
 
 	/* Throw away any received data from the host */
 	if (Endpoint_IsOUTReceived())
 		{
 		LEDs_SetAllLEDs(LEDS_ALL_LEDS);
-		_delay_ms(50);
-		LEDs_SetAllLEDs(LEDS_NO_LEDS);
-		_delay_ms(50);
 
-		while (Endpoint_BytesInEndpoint() && len < 32)
+		while (Endpoint_BytesInEndpoint() && len < 128)
 			{
 			// Read the reportID from the package to determine amount of data to expect next
 			while (Endpoint_Read_Stream_LE(&data[len++], 1, NULL)
@@ -474,104 +528,225 @@ void CDC1_Task(void)
 
 		Endpoint_ClearOUT();
 
-		uint8_t i = 0;
-		switch (data[0])
+		for (uint16_t i = 0; i < len; i++)
 			{
-			case 'l':
-				LogTextP(PSTR("Effects:\n"));
-				while (FfbDebugListEffects(&i))
-					FlushDebugBuffer();
-
-				if (gDisabledEffects.springs)
-					LogTextP(PSTR(" Springs disabled\n"));
-				if (gDisabledEffects.constants)
-					LogTextP(PSTR(" Constants disabled\n"));
-				if (gDisabledEffects.triangles)
-					LogTextP(PSTR(" Triangles disabled\n"));
-				if (gDisabledEffects.sines)
-					LogTextP(PSTR(" Sines disabled\n"));
-				break;
-			case 's':
-				FfbEnableSprings(false);
-				break;
-			case 'S':
-				FfbEnableSprings(true);
-				break;
-			case 'c':
-				FfbEnableConstants(false);
-				break;
-			case 'C':
-				FfbEnableConstants(true);
-				break;
-			case 't':
-				FfbEnableTriangles(false);
-				break;
-			case 'T':
-				FfbEnableTriangles(true);
-				break;
-
-			case '1':
-			case '2':
-			case '3':
-			case '4':
-			case '5':
-			case '6':
-			case '7':
-			case '8':
-			case '9':
-				FfbEnableEffectId(data[0] - '0', false);
-				break;
-			case '!':
-				FfbEnableEffectId(1, true);
-				break;
-			case '\"':
-				FfbEnableEffectId(2, true);
-				break;
-			case '#':
-				FfbEnableEffectId(3, true);
-				break;
-			case '¤':
-				FfbEnableEffectId(4, true);
-				break;
-			case '%':
-				FfbEnableEffectId(5, true);
-				break;
-			case '&':
-				FfbEnableEffectId(6, true);
-				break;
-			case '/':
-				FfbEnableEffectId(7, true);
-				break;
-			case '(':
-				FfbEnableEffectId(8, true);
-				break;
-			case ')':
-				FfbEnableEffectId(9, true);
-				break;
-
-			case 'm':
-				gDebugMode = gDebugMode & (~DEBUG_TO_MIDI);
-				break;
-			case 'M':
-				gDebugMode |= DEBUG_TO_MIDI;
-				break;
-
-			case 'u':
-				gDebugMode = gDebugMode & (~DEBUG_TO_USB);
-				break;
-			case 'U':
-				gDebugMode |= DEBUG_TO_USB;
-				break;
-
-			case 'd':
-				gDebugMode = gDebugMode & (~DEBUG_DETAIL);
-				break;
-			case 'D':
-				gDebugMode |= DEBUG_DETAIL;
-				break;
+			ProcessDataFromCOMSerial(data[i]);
 			}
+
+		LEDs_SetAllLEDs(LEDS_NO_LEDS);
 		}
-#endif
+	}
+
+uint8_t ParseHexNibble(char data)
+	{
+	if (data >= '0' && data <= '9')
+		return data - '0';
+	else if (data >= 'a' && data <= 'f')
+		return (data - 'a') + 10;
+	else if (data >= 'A' && data <= 'F')
+		return (data- 'A') + 10;
+	else
+		return 0xFF; // not a hex nibble
 	}
 
 
+void DoCommandListEffects(void);
+void DoCommandSetDebug(char command, char value);
+void DoCommandSetEffectType(char effectType, char value);
+void DoCommandSetEffectAtIndex(uint8_t effectIndex, char value);
+void DoCommandSendMidi(uint8_t *data, uint16_t len);
+void DoCommandSimulateUsbReceive(uint8_t *data, uint16_t len);
+
+void ProcessCommandDataFromCOMSerial(char command, char data);
+
+volatile static uint8_t gOngoingSerialCommandDataLen = 0; // expected length of actual command data
+volatile static char gOngoingSerialCommand = '\0';
+
+void ProcessDataFromCOMSerial(char data)
+	{
+	volatile static uint8_t gOngoingSerialCommandParameterPos = 0; // how many parameter nibbles have been read
+	volatile static uint8_t gDataByte = 0; // currently parsed data byte cache
+
+	// Check for start of a new command
+	if (gOngoingSerialCommand == 0)
+		{
+		if (DoDebug(DEBUG_DETAIL))
+			{
+			LogBinaryLf(&data, 1);
+			}
+
+		if (data <= 32 || data > 'z') return; // some sanity checking - skip possible garbage or formatting
+
+		// Commands with no parameters can be handled directly here
+		if (data == 'l')
+			{
+			DoCommandListEffects();
+			return;
+			}
+
+		// The command has parameter data - need to parse and collect them nibble by nibble
+		gOngoingSerialCommand = data;
+		gOngoingSerialCommandParameterPos = 0;
+		gOngoingSerialCommandDataLen = 0;
+		return;
+		}
+
+	if (DoDebug(DEBUG_DETAIL))
+		{
+		LogBinary(&data, 1);
+		}
+
+	// Check for data length parameter (2 hexadecimal nibbles)
+	if (gOngoingSerialCommandParameterPos == 0)
+		{
+		uint8_t value = ParseHexNibble(data);
+		if (value == 0xFF)
+			return;
+		gOngoingSerialCommandParameterPos = 1;
+		gOngoingSerialCommandDataLen = value << 4;
+		return;
+		}
+
+	if (gOngoingSerialCommandParameterPos == 1)
+		{
+		uint8_t value = ParseHexNibble(data);
+		if (value == 0xFF)
+			return;
+		gOngoingSerialCommandParameterPos = 2;
+		gOngoingSerialCommandDataLen += value;
+
+		if (DoDebug(DEBUG_DETAIL))
+			{
+			LogTextP(PSTR("Expecting data len="));
+			LogBinaryLf((uint8_t*) &gOngoingSerialCommandDataLen, 1);
+			}
+
+		return;
+		}
+
+	// Parse actual data
+	uint8_t value = ParseHexNibble(data);
+	if (value == 0xFF)
+		return;
+	gOngoingSerialCommandParameterPos++;
+	if (gOngoingSerialCommandParameterPos % 2)
+		{
+		gDataByte = value << 4;
+		}
+	else
+		{
+		gDataByte = gDataByte + value;
+		ProcessCommandDataFromCOMSerial(gOngoingSerialCommand, gDataByte);
+		}
+	}
+
+void CompletedCommandDataFromCOMSerial(char command, char *data, uint16_t len);
+
+void ProcessCommandDataFromCOMSerial(char command, char data)
+	{
+	if (DoDebug(DEBUG_DETAIL))
+		{
+		LogTextP(PSTR("Received data="));
+		LogBinaryLf((uint8_t*) &data, 1);
+		}
+
+	// Reserve a buffer for sending raw-data from COM serial to USB/MIDI handling
+#define SERIAL_COMMAND_BUFFER_SIZE 40
+	static char SERIAL_COMMAND_BUFFER[SERIAL_COMMAND_BUFFER_SIZE];
+	volatile static uint8_t gOngoingSerialCommandDataPos = 0; // writer offset of command data in SERIAL_COMMAND_BUFFER
+
+	SERIAL_COMMAND_BUFFER[gOngoingSerialCommandDataPos] = data;
+	gOngoingSerialCommandDataPos++;
+
+	if (gOngoingSerialCommandDataPos >= gOngoingSerialCommandDataLen)
+		{ // all data received - command completely received
+		CompletedCommandDataFromCOMSerial(command, SERIAL_COMMAND_BUFFER, gOngoingSerialCommandDataLen);
+		gOngoingSerialCommand = 0; // wait for the next command
+		gOngoingSerialCommandDataPos = 0;
+		}
+	}
+
+void CompletedCommandDataFromCOMSerial(char command, char *data, uint16_t len)
+	{
+	LogTextP(PSTR("Com  => Command="));
+	LogBinary(&command, 1);
+	LogTextP(PSTR(", data="));
+	LogBinaryLf(data, len);
+
+	if (command == 'd' || command == 'D')
+		DoCommandSetDebug(command, data[0]);
+	else if (command == 'm')
+		DoCommandSendMidi((uint8_t*) data, len);
+	else if (command == 'u')
+		DoCommandSimulateUsbReceive((uint8_t*) data, len);
+	else if (command == 't') // disable effect type
+		DoCommandSetEffectType(data[0], 0);
+	else if (command == 'T') // enable effect type
+		DoCommandSetEffectType(data[0], 1);
+	else if (command == 'e') // disable effect at index
+		DoCommandSetEffectAtIndex(data[0], 0);
+	else if (command == 'E') // enable effect at index
+		DoCommandSetEffectAtIndex(data[0], 1);
+	else
+		{
+		LogTextLfP(PSTR("Error: unknown command"));
+		}
+	}
+
+void DoCommandListEffects()
+	{
+	LogTextP(PSTR("Effects:\n"));
+	uint8_t i = 0;
+	while (FfbDebugListEffects(&i))
+		FlushDebugBuffer();
+
+	if (gDisabledEffects.springs)
+		LogTextP(PSTR(" Springs disabled\n"));
+	if (gDisabledEffects.constants)
+		LogTextP(PSTR(" Constants disabled\n"));
+	if (gDisabledEffects.triangles)
+		LogTextP(PSTR(" Triangles disabled\n"));
+	if (gDisabledEffects.sines)
+		LogTextP(PSTR(" Sines disabled\n"));
+	}
+
+void DoCommandSetDebug(char command, char value)
+	{
+	if (command == 'd')
+		gDebugMode = gDebugMode & (~value);
+	else
+		gDebugMode |= value;
+	}
+
+void DoCommandSetEffectType(char effectType, char value)
+	{
+	if (effectType == 8)
+		FfbEnableSprings(value);
+	else if (effectType == 1)
+		FfbEnableConstants(value);
+	else if (effectType == 5)
+		FfbEnableTriangles(value);
+	else if (effectType == 2)
+		FfbEnableSines(value);
+	else
+		{
+		LogTextLfP(PSTR("Error: unknown effect type to enable/disable"));
+		}
+	}
+
+void DoCommandSetEffectAtIndex(uint8_t effectIndex, char value)
+	{
+	FfbEnableEffectId(effectIndex, value);
+	}
+
+void DoCommandSendMidi(uint8_t *data, uint16_t len)
+	{
+	FfbSendData(data, len);
+	}
+
+void DoCommandSimulateUsbReceive(uint8_t *data, uint16_t len)
+	{
+	FfbOnUsbData(data, len);
+	}
+
+#endif //ENABLE_JOYSTICK_SERIAL
