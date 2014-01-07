@@ -35,6 +35,9 @@
 #ifndef _DESCRIPTORS_H_
 #define _DESCRIPTORS_H_
 
+// Define: ENABLE_JOYSTICK_SERIAL
+//	When defined, includes USB COM serial port to the device
+//	in addition to joystick.
 #define ENABLE_JOYSTICK_SERIAL
 
 	/* Includes: */
