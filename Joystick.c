@@ -4,6 +4,7 @@
   This code is for Microsoft Sidewinder Force Feedback Pro joystick.
 
   Copyright 2012  Tero Loimuneva (tloimu [at] gmail [dot] com)
+  Copyright 2013  Saku Kekkonen - Modifications for FF Wheel support
   MIT License.
 
   Code marked with "3DPVert" is from Detlef "Grendel" Mueller's
@@ -237,31 +238,52 @@ int Joystick_CreateInputReport(uint8_t inReportId, USB_JoystickReport_Data_t* co
 		ADCSRA|=(1<<ADSC);
 		}
 
-
+/*
+5 wwwwwwww
+4 aaaaaaww 
+3 BAbbbbbb
+2 1FLZYXRC
+1 p-------
+0 --------
+*/
+		
 	// Convert the raw input data to USB report
 
 	outReportData->reportId = 1;	// Input report ID 1
 
-	// Convert data from Sidewinder Force Feedback Pro
-	outReportData->X = sw_report[0] + ((sw_report[1] & 0x03) << 8);
-	if (sw_report[1] & 0x02)
-		outReportData->X |= (0b11111100 << 8);
-	outReportData->Y = (sw_report[1] >> 2) + ((sw_report[2] & 0x0F) << 6);
-	if (sw_report[2] & 0x08)
-		outReportData->Y |= (0b11111100 << 8);
-	outReportData->Button = ((sw_report[4] & 0x7F) << 2) + ((sw_report[3] & 0xC0) >> 6);
-	outReportData->Hat = sw_report[2] >> 4;
-	outReportData->Rz = (sw_report[3] & 0x3f) - 32;
-	outReportData->Throttle = ((sw_report[5] & 0x3f) << 1) + (sw_report[4] >> 7);
-	if (sw_report[5] & 0x20)
-		outReportData->Throttle |= 0b11000000;
+	if (sw_id == SW_ID_FFPW)
+		{
+		outReportData->Button = ((sw_report[2] << 2) | (sw_report[3] >> 6)) ^ 0x00ff;
+		outReportData->X = ((sw_report[4] & 0x03) << 8) + sw_report[5];
+		outReportData->Y = (sw_report[4] & 0xfc) << 2;
+		/* actually break for wheel */
+		outReportData->Throttle = 63-(sw_report[3] & 0x3f);
+		}
+	else
+		{
+		// Convert data from Sidewinder Force Feedback Pro
+		outReportData->X = sw_report[0] + ((sw_report[1] & 0x03) << 8);
+		if (sw_report[1] & 0x02)
+			outReportData->X |= (0b11111100 << 8);
+		
+		
+		outReportData->Y = (sw_report[1] >> 2) + ((sw_report[2] & 0x0F) << 6);
+		if (sw_report[2] & 0x08)
+			outReportData->Y |= (0b11111100 << 8);
+		outReportData->Button = ((sw_report[4] & 0x7F) << 2) + ((sw_report[3] & 0xC0) >> 6);
+		outReportData->Hat = sw_report[2] >> 4;
+		outReportData->Rz = (sw_report[3] & 0x3f) - 32;
+		outReportData->Throttle = ((sw_report[5] & 0x3f) << 1) + (sw_report[4] >> 7);
+		if (sw_report[5] & 0x20)
+			outReportData->Throttle |= 0b11000000;
 
-	outReportData->Z = 0;	// not used at the moment
+		outReportData->Z = 0;	// not used at the moment
 
-	// Get data from additional controls
-	outReportData->Rudder = (added_controls_adc.pedal2 - added_controls_adc.pedal1) / 2 - 128;	// Combine two pedals into a single rudder
-	outReportData->Rx = added_controls_adc.trim2;	// rudder trim
-	outReportData->Ry = added_controls_adc.trim1;	// elevator trim
+		// Get data from additional controls
+		outReportData->Rudder = (added_controls_adc.pedal2 - added_controls_adc.pedal1) / 2 - 128;	// Combine two pedals into a single rudder
+		outReportData->Rx = added_controls_adc.trim2;	// rudder trim
+		outReportData->Ry = added_controls_adc.trim1;	// elevator trim
+		}
 
 /*
 	// This test code generates ever changing position and button values

@@ -38,8 +38,7 @@
 #define	DATSZ3DP	22	/* 3DP data packet size in clock ticks (x3 bit, sent 3x) */
 #define	IDSZ3DP		160	/* 3DP ID packet size in clock ticks */
 #define	DATSZFFP	16	/* FFP/PP data packet size in clock ticks (x3 bit) */
-#define	IDSZPP		40	/* PP ID packet size */
-#define	IDSZFFP		14	/* FFP ID packet size */
+#define	DATSZFFPW	11	/* FFP/PP data packet size in clock ticks (x3 bit) */
 
 //-------------------------------------------------------------------------------
 // Things not defined in iom32u4.h
@@ -170,6 +169,7 @@
 #define	SW_ID_3DP	1			/* 3DP connected */
 #define	SW_ID_PP	2			/*  PP connected */
 #define	SW_ID_FFP	3			/* FFP connected */
+#define SW_ID_FFPW	4			/* FFP Wheel connected */
 
 //-------------------------------------------------------------------------------
 // Inline code
