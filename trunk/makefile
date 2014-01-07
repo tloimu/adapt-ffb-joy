@@ -137,6 +137,8 @@ SRC = Joystick.c \
 	  Descriptors.c \
       main.c \
 	  ffb.c \
+	  ffb-pro.c \
+	  ffb-wheel.c \
       3DPro.c \
       debug.c \
 	  $(LUFA_SRC_USB)

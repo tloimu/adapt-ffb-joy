@@ -27,6 +27,9 @@
   this software.
 */
 
+#ifndef _FFB_
+#define _FFB_
+
 #include <avr/io.h>
 
 
@@ -37,7 +40,7 @@
 
 // Maximum number of parallel effects in memory
 #define MAX_EFFECTS 20
-
+	
 // ---- Input
 
 typedef struct
@@ -187,59 +190,12 @@ typedef struct
 	uint8_t		memoryManagement;	// Bits: 0=DeviceManagedPool, 1=SharedParameterBlocks
 	} USB_FFBReport_PIDPool_Feature_Data_t;
 
-
-// ----------------------------------
-// Microsoft Sidewinder Force Feedback Pro FFB structures
-
-typedef struct
-	{
-	uint8_t command;	// always 0x23	-- start counting checksum from here
-	uint8_t waveForm;	// 2=sine, 5=Square, 6=RampUp, 7=RampDown, 8=Triange, 0x12=Constant
-	uint8_t unknown1;	// ? always 0x7F
-	uint16_t duration;	// unit=2ms
-	uint16_t unknown2;	// ? always 0x0000
-	uint16_t direction;
-	uint8_t	unknown3[5];	// ? always 7f 64 00 10 4e
-	uint8_t attackLevel;
-	uint16_t	attackTime;
-	uint8_t		magnitude;
-	uint16_t	fadeTime;
-	uint8_t	fadeLevel;
-	uint8_t	waveLength;	// 0x6F..0x01 => 1/Hz
-	uint8_t unknown5;	// ? always 0x00
-	uint16_t param1;	// Varies by effect type; Constant: positive=7f 00, negative=01 01, Other effects: 01 01
-	uint16_t param2;	// Varies by effect type; Constant: 00 00, Other effects 01 01
-	} FFP_MIDI_Effect_Basic;
-
-typedef struct
-	{
-	uint8_t command;	// always 0x23	-- start counting checksum from here
-	uint8_t waveForm;	// 0xd=Spring, 0x0e=Damper, 0xf=Inertia
-	uint8_t unknown1;	// ? always 0x7F
-	uint16_t duration;	// unit=2ms
-	uint16_t unknown2;	// ? always 0x0000
-	uint16_t coeffAxis0;
-	uint16_t coeffAxis1;
-	uint16_t offsetAxis0;
-	uint16_t offsetAxis1;
-	} FFP_MIDI_Effect_Spring_Inertia_Damper;
-
-
-typedef struct
-	{
-	uint8_t command;	// always 0x23	-- start counting checksum from here
-	uint8_t waveForm;	// 0x10=Friction
-	uint8_t unknown1;	// ? always 0x7F
-	uint16_t duration;	// unit=2ms
-	uint16_t unknown2;	// ? always 0x0000
-	uint16_t coeffAxis0;
-	uint16_t coeffAxis1;
-	} FFP_MIDI_Effect_Friction;
-
 // Lengths of each report type
 extern const uint16_t OutReportSize[];
 
 // Handles Force Feeback data manipulation from USB reports to joystick's MIDI channel
+
+void FfbSetDriver(uint8_t id);
 
 // Initializes and enables MIDI to joystick using USART1 TX
 void FfbInitMidi(void);
@@ -258,13 +214,18 @@ void FfbOnCreateNewEffect(USB_FFBReport_CreateNewEffect_Feature_Data_t* inData, 
 void FfbOnPIDPool(USB_FFBReport_PIDPool_Feature_Data_t *data);
 
 // Utility to wait any amount of milliseconds.
-// Resets watchdog at the beginning of each call so
-// if watchdog is enabled, don't make too long waits
-// in once call.
+// Resets watchdog for each 1ms wait.
 void WaitMs(int ms);
 
+// delay_us has max limits and the wait time must be known at compile time.
+// function for making 10us delays that don't have be known at compile time.
+// max delay 2560us.
+void _delay_us10(uint8_t delay);
+
 // Send raw data to the
-void FfbSendData(uint8_t *data, uint16_t len);
+void FfbSendData(const uint8_t *data, uint16_t len);
+void FfbSendPackets(const uint8_t *data, uint16_t len);
+void FfbPulseX1( void );
 
 // Debugging
 //	<index> should be pointer to an index variable whose value should be set to 0 to start iterating.
@@ -285,9 +246,78 @@ typedef struct
 
 extern volatile TDisabledEffectTypes gDisabledEffects;
 
+void FfbSendSysEx(const uint8_t* midi_data, uint8_t len);
+uint16_t UsbUint16ToMidiUint14(uint16_t inUsbValue);
+int16_t UsbInt8ToMidiInt14(int8_t inUsbValue);
+uint8_t CalcGain(uint8_t usbValue, uint8_t gain);
+
 void FfbEnableSprings(uint8_t inEnable);
 void FfbEnableConstants(uint8_t inEnable);
 void FfbEnableTriangles(uint8_t inEnable);
 void FfbEnableSines(uint8_t inEnable);
 void FfbEnableEffectId(uint8_t inId, uint8_t inEnable);
 
+// Bit-masks for effect states
+#define MEffectState_Free			0x00
+#define MEffectState_Allocated		0x01
+#define MEffectState_Playing		0x02
+#define MEffectState_SentToJoystick	0x04
+
+#define USB_DURATION_INFINITE	0x7FFF
+#define MIDI_DURATION_INFINITE	0
+
+#define USB_EFFECT_CONSTANT		0x01
+#define USB_EFFECT_RAMP			0x02
+#define USB_EFFECT_SQUARE 		0x03
+#define USB_EFFECT_SINE 		0x04
+#define USB_EFFECT_TRIANGLE		0x05
+#define USB_EFFECT_SAWTOOTHDOWN	0x06
+#define USB_EFFECT_SAWTOOTHUP	0x07
+#define USB_EFFECT_SPRING		0x08
+#define USB_EFFECT_DAMPER		0x09
+#define USB_EFFECT_INERTIA		0x0A
+#define USB_EFFECT_FRICTION		0x0B
+#define USB_EFFECT_CUSTOM		0x0C
+
+#define MAX_MIDI_MSG_LEN 27 /* enough to hold longest midi message data part, FFP_MIDI_Effect_Basic */
+
+/* start of midi data common for both pro and wheel protocols */
+typedef struct {
+	uint8_t command;	// 0x23 for pro, 0x20 for wheel
+	uint8_t waveForm;	// different enumeration for pro/wheel
+	uint8_t unknown1;	// always 0x7F
+	uint16_t duration;	// unit=2ms
+} midi_data_common_t;
+
+typedef struct {
+	uint8_t state;	// see constants <MEffectState_*>
+	uint16_t usb_duration, usb_fadeTime;	// used to calculate fadeTime to MIDI, since in USB it is given as time difference from the end while in MIDI it is given as time from start
+	// These are used to calculate effects of USB gain to MIDI data
+	uint8_t usb_gain, usb_offset, usb_attackLevel, usb_fadeLevel;
+	uint8_t usb_magnitude;
+	volatile uint8_t	data[MAX_MIDI_MSG_LEN];
+	} TEffectState;
+
+typedef struct
+	{
+	void (*EnableInterrupts)(void);
+	const uint8_t* (*GetSysExHeader)(uint8_t* hdr_len);
+	void (*SetAutoCenter)(uint8_t enable);
+	uint8_t (*UsbToMidiEffectType)(uint8_t usb_effect_type);
+	
+	void (*StartEffect)(uint8_t eid);
+	void (*StopEffect)(uint8_t eid);
+	void (*FreeEffect)(uint8_t eid);
+	
+	void (*ModifyDuration)(uint8_t effectId, uint16_t duration);
+	
+	void (*CreateNewEffect)(USB_FFBReport_CreateNewEffect_Feature_Data_t* inData, volatile TEffectState* effect);
+	void (*SetEnvelope)(USB_FFBReport_SetEnvelope_Output_Data_t* data, volatile TEffectState* effect);
+	void (*SetCondition)(USB_FFBReport_SetCondition_Output_Data_t* data, volatile TEffectState* effect);
+	void (*SetPeriodic)(USB_FFBReport_SetPeriodic_Output_Data_t* data, volatile TEffectState* effect);
+	void (*SetConstantForce)(USB_FFBReport_SetConstantForce_Output_Data_t* data, volatile TEffectState* effect);
+	void (*SetRampForce)(USB_FFBReport_SetRampForce_Output_Data_t* data, volatile TEffectState* effect);
+	int  (*SetEffect)(USB_FFBReport_SetEffect_Output_Data_t* data, volatile TEffectState* effect);
+	} FFB_Driver;
+
+#endif // _FFB_PRO_

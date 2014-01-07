@@ -65,6 +65,7 @@
 
 #include "3DPro.h"
 #include "ffb.h"
+#include <string.h>
 
 //------------------------------------------------------------------------------
 //******************************************************************************
@@ -214,17 +215,22 @@ static void FA_NOINLINE( Trigger ) ( void )
 // Check if the FFP/PP data packet at *pkt is valid by xoring all bits together.
 // Result must be 1 for the packet to have correct parity.
 
-static uint8_t FA_NOINLINE( CheckFFPPkt ) ( uint8_t *pkt )
+static uint8_t FA_NOINLINE( CheckFFPPkt ) ( uint8_t *pkt, uint8_t pkt_size )
 {
     uint8_t
 	x ;
 
-    x  = pkt[0] ^ pkt[1] ^ pkt[2] ^ pkt[3] ^ pkt[4] ^ pkt[5] ;
+    x  = pkt[2] ^ pkt[3] ^ pkt[4] ^ pkt[5] ;
+	if ( pkt_size == 16 )
+		x ^= pkt[0] ^ pkt[1];
 
     x ^= x >> 4 ;
     x ^= x >> 2 ;
     x ^= x >> 1 ;
 
+	if ( pkt_size == 11 )
+		x ^= (pkt[1]) ;
+	
     return ( x & 1 ) ;
 }
 
@@ -238,68 +244,6 @@ static void FA_NOINLINE( Flash_LED_12MS ) ( void )
     Delay_1024( T0DEL4MS ) ;
     LED_off() ;
     Delay_1024( T0DEL8MS ) ;
-}
-
-
-//------------------------------------------------------------------------------
-
-// Initialize FFP/PP by reading the ID. This has to be done, else the PP will
-// only use B0/1 for data transfer. Actually only the 3D Pro Plus does that.
-// Do it anyways for type determination.
-// QueryFFP() needs to be called before this function for a valid sw_clkcnt.
-
-static uint8_t InitFFPro ( void )
-{
-    uint8_t
-        butt,
-        idpktsz ;
-
-    butt = BUTPIN;//MapPinsToButtons(BUTPIN) ;				// Save current button data
-
-    idpktsz = sw_clkcnt ;			// remember packetsize
-
-		// FORCE FFP interpretation
-		if (CheckFFPPkt( ffp_packet ))
-			{
-			sw_id = SW_ID_FFP ;			// Found FFP
-			return (TRUE);
-			}
-		else
-			return (FALSE);
-
-    QueryFFP( -(sw_clkcnt - 6), 126 ) ;		// Read ID, signal kick at -6 clk of data packet
-
-    Delay_1024( T0DEL8MS ) ;			// Give the stick some time..
-
-    idpktsz = sw_clkcnt - idpktsz ;		// Sizeof ID packet
-
-    if ( ! QueryFFP( 0, DATSZFFP ) )		// Signal for a regular packet, 16 triplets
-	return ( FALSE ) ;			// Timed out..
-
-    if ( CheckFFPPkt( ffp_packet ) )		// Packet parity checks out
-    {
-	if ( idpktsz == IDSZPP )
-	    sw_id = SW_ID_PP ;			// Found PP
-	else
-	if ( idpktsz == IDSZFFP )
-	    sw_id = SW_ID_FFP ;			// Found FFP
-	else
-	if ( idpktsz == 0 )			// 10nF timer, FFP or PP in 3bit mode
-	{
-	    if ( (butt & BUTMSK) == BUTMSK )	// PP
-		sw_id = SW_ID_PP ;
-	    else				// FFP
-		sw_id = SW_ID_FFP ;
-	}
-	else
-	    return ( FALSE ) ;			// Unknown stick..
-
-	CopyFFPData( ffp_packet ) ;		// Copy data to report buffer
-
-	return ( TRUE ) ;			// Got it
-    }
-
-    return ( FALSE ) ;				// Stick not found
 }
 
 //------------------------------------------------------------------------------
@@ -356,14 +300,22 @@ void FA_NAKED( init_hw ) ( void )
 		if ( ! ~sw_clkcnt )
 		    sw_clkcnt = 0 ;
 
-		if (    sw_clkcnt == (16 + 1)		// FFP/PP in 3-bit mode
-		     || sw_clkcnt == (48 + 1) )		// 3DPP in 1-bit mode
+		if ( sw_clkcnt == (DATSZFFP+1) &&
+			CheckFFPPkt( ffp_packet, DATSZFFP ) )
 			{
-		    if ( InitFFPro() )			// found FFP/PP
-				{
-				break ;				// break forever
-				}
+				sw_id = SW_ID_FFP ;
+				FfbSetDriver(0);
+				break;
 			}
+
+		if ( sw_clkcnt == (DATSZFFPW+1) &&
+			CheckFFPPkt( ffp_packet, DATSZFFPW ) )
+			{
+				sw_id = SW_ID_FFPW ;
+				FfbSetDriver(1);
+				break;
+			}
+			
 		dis3DP_INT() ;
 	    }
 
@@ -383,9 +335,11 @@ void FA_NAKED( init_hw ) ( void )
 void getdata ( void )
 	{
     uint8_t
-	i ;
+	pkt_size, i ;
 
-	i = QueryFFP( 0, DATSZFFP ) ;		// Query FFP
+	pkt_size = (sw_id == SW_ID_FFPW ? DATSZFFPW : DATSZFFP);
+	
+	i = QueryFFP( 0, pkt_size ) ;		// Query FFP
 
     dis3DP_INT() ;
 
@@ -398,12 +352,16 @@ void getdata ( void )
     	{
 		sw_problem = 0 ;			// Reset problem counter
 
-		if ( CheckFFPPkt( ffp_packet ) )	// If PP/FFP packet ok
+		if ( CheckFFPPkt( ffp_packet, pkt_size ) )	// If PP/FFP packet ok
 			{
 	    	// LED_on() ;			// Signal good packet read
 
-	    	CopyFFPData( ffp_packet ) ;		// Copy data into report
+			if ( sw_id == SW_ID_FFPW )
+				memcpy(sw_report, ffp_packet, 6);		// Copy data into report
+			else
+				CopyFFPData( ffp_packet ) ;		// Copy data into report
 			}
+			
 		}
 	}
 
