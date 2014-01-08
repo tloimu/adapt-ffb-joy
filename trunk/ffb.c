@@ -149,7 +149,7 @@ void StopEffect(uint8_t id)
 		return;
 	gEffectStates[id].state &= ~MEffectState_Playing;
 	if (!gDisabledEffects.effectId[id])
-		ffb->FreeEffect(id);
+		ffb->StopEffect(id);
 	}
 
 void FreeEffect(uint8_t id)

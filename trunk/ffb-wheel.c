@@ -99,7 +99,7 @@ void FfbwheelSetAutoCenter(uint8_t enable)
 
 const uint8_t* FfbwheelGetSysExHeader(uint8_t* hdr_len)
 {
-	static const uint8_t header[] = {0x00, 0x01, 0x0a, 0x15};
+	static const uint8_t header[] = {0xf0, 0x00, 0x01, 0x0a, 0x15};
 	*hdr_len = sizeof(header);
 	return header;
 }
