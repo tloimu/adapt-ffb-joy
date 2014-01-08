@@ -173,12 +173,9 @@ void FreeAllEffects(void)
 // Utilities
 
 void FfbSendSysEx(const uint8_t* midi_data, uint8_t len)
-{
-	uint8_t mark = 0xF0;	// SysEx Start
-	FfbSendData(&mark, 1);
-	
+{	
 	uint8_t hdr_len;
-	const uint8_t*	hdr = ffb->GetSysExHeader(&hdr_len);
+	const uint8_t*	hdr = ffb->GetSysExHeader(&hdr_len); // header includes the first 0xF0
 	FfbSendData(hdr, hdr_len);
 	
 	FfbSendData((uint8_t*) midi_data, len);
@@ -189,7 +186,7 @@ void FfbSendSysEx(const uint8_t* midi_data, uint8_t len)
 	checksum = (0x80-checksum) & 0x7f;
 	FfbSendData(&checksum, 1);
 
-	mark = 0xF7;	// SysEx End
+	uint8_t mark = 0xF7;	// SysEx End
 	FfbSendData(&mark, 1);
 }
 
@@ -256,8 +253,7 @@ void FfbOnUsbData(uint8_t *data, uint16_t len)
 	// Parse incoming USB data and convert it to MIDI data for the joystick
 	LEDs_SetAllLEDs(LEDS_ALL_LEDS);
 
-	if (gDebugMode & DEBUG_DETAIL)
-		LogReport("<= FfbData:", OutReportSize, data, len);
+	LogReport(PSTR("Usb  =>"), OutReportSize, data, len);
 
 	uint8_t effectId = data[1]; // effectBlockIndex is always the second byte.
 		
@@ -313,9 +309,6 @@ void FfbOnUsbData(uint8_t *data, uint16_t len)
 
 void FfbOnCreateNewEffect(USB_FFBReport_CreateNewEffect_Feature_Data_t* inData, USB_FFBReport_PIDBlockLoad_Feature_Data_t *outData)
 {
-	LogTextP(PSTR("Create New Effect:\n  "));
-	LogBinaryLf(inData, sizeof(USB_FFBReport_CreateNewEffect_Feature_Data_t));
-
 	outData->reportId = 6;
 	outData->effectBlockIndex = GetNextFreeEffect();
 	
@@ -339,13 +332,48 @@ void FfbOnCreateNewEffect(USB_FFBReport_CreateNewEffect_Feature_Data_t* inData, 
 	}
 	
 	outData->ramPoolAvailable = 0xFFFF;	// =0 or 0xFFFF - don't really know what this is used for?
-	LogDataLf("  => Usb:", outData->reportId, outData, sizeof(USB_FFBReport_PIDBlockLoad_Feature_Data_t));
+
+	if (DoDebug(DEBUG_DETAIL))
+		{
+		LogTextP(PSTR("Create New Effect => id="));
+		LogBinary(&outData->effectBlockIndex, 1);
+		LogTextP(PSTR(", status="));
+		LogBinaryLf(&outData->loadStatus, 1);
+		FlushDebugBuffer();
+		}
+
+	LogDataLf("Usb <=", outData->reportId, outData, sizeof(USB_FFBReport_PIDBlockLoad_Feature_Data_t));
+
 	WaitMs(5);
 }
 
 void FfbHandle_SetEffect(USB_FFBReport_SetEffect_Output_Data_t *data)
 {
 	volatile TEffectState* effect = &gEffectStates[data->effectBlockIndex];
+	
+	if (DoDebug(DEBUG_DETAIL))
+		{
+		LogTextP(PSTR("Set Effect:"));
+		LogBinaryLf(data, sizeof(USB_FFBReport_SetEffect_Output_Data_t));
+		LogTextP(PSTR("  id  =")); LogBinaryLf(&data->effectBlockIndex, sizeof(data->effectBlockIndex));
+		LogTextP(PSTR("  type=")); LogBinaryLf(&data->effectType, sizeof(data->effectType));
+		LogTextP(PSTR("  gain=")); LogBinaryLf(&data->gain, sizeof(data->gain));
+		LogTextP(PSTR("  dura=")); LogBinaryLf(&data->duration, sizeof(data->duration));
+		if (data->enableAxis)
+			{
+			LogTextP(PSTR("  X=")); LogBinaryLf(&data->directionX, sizeof(data->directionX));
+			LogTextP(PSTR("  Y=")); LogBinaryLf(&data->directionY, sizeof(data->directionY));
+			}
+		if (data->triggerRepeatInterval)
+			{
+			LogTextP(PSTR("  repeat=")); LogBinaryLf(&data->triggerRepeatInterval, sizeof(data->triggerRepeatInterval));
+			}
+		if (data->triggerButton)
+			{
+			LogTextP(PSTR("  button=")); LogBinaryLf(&data->triggerButton, sizeof(data->triggerButton));
+			}
+		FlushDebugBuffer();
+		}
 
 	midi_data_common_t* midi_data = (midi_data_common_t*)effect->data;
 	
@@ -371,7 +399,10 @@ void FfbHandle_SetEffect(USB_FFBReport_SetEffect_Output_Data_t *data)
 
 void FfbOnPIDPool(USB_FFBReport_PIDPool_Feature_Data_t *data)
 	{
-	LogTextP(PSTR("GetReport PID Pool Feature:\n  => Usb:"));
+	if (DoDebug(DEBUG_DETAIL))
+		{
+		LogTextLfP(PSTR("GetReport PID Pool Feature"));
+		}
 
 	FreeAllEffects();
 
@@ -379,20 +410,20 @@ void FfbOnPIDPool(USB_FFBReport_PIDPool_Feature_Data_t *data)
 	data->ramPoolSize = 0xFFFF;
 	data->maxSimultaneousEffects = 0x0A;	// FFP supports playing up to 10 simultaneous effects
 	data->memoryManagement = 3;
-
-	LogBinaryLf(data, sizeof(USB_FFBReport_PIDPool_Feature_Data_t));
 	}
 
 void FfbHandle_SetCustomForceData(USB_FFBReport_SetCustomForceData_Output_Data_t *data)
 	{
-	LogTextLf("Set Custom Force Data");
+	if (DoDebug(DEBUG_DETAIL))
+		LogTextLf("Set Custom Force Data");
 	}
 
 
 
 void FfbHandle_SetDownloadForceSample(USB_FFBReport_SetDownloadForceSample_Output_Data_t *data)
 	{
-	LogTextLf("Set Download Force Sample");
+	if (DoDebug(DEBUG_DETAIL))
+		LogTextLf("Set Download Force Sample");
 	}
 
 
@@ -401,17 +432,19 @@ void FfbHandle_EffectOperation(USB_FFBReport_EffectOperation_Output_Data_t *data
 	{
 	uint8_t eid = data->effectBlockIndex;
 
-//	LogTextP(PSTR("Effect Operation:"));
-	LogBinary(&eid, 1);
-//	LogBinary(data, sizeof(USB_FFBReport_EffectOperation_Output_Data_t));
+	if (DoDebug(DEBUG_DETAIL))
+		{
+		LogTextP(PSTR("Effect Operation:"));
+		LogBinary(&eid, 1);
+		}
 
 	if (eid == 0xFF)
 		eid = 0x7F;	// All effects
 
 	if (data->operation == 1)
 		{	// Start
-		LogTextLfP(PSTR(" Start"));
-		LogBinaryLf(&eid, 1);
+		if (DoDebug(DEBUG_DETAIL))
+			LogTextLfP(PSTR(" Start"));
 
 		StartEffect(data->effectBlockIndex);
 		if (!gDisabledEffects.effectId[eid])
@@ -419,7 +452,8 @@ void FfbHandle_EffectOperation(USB_FFBReport_EffectOperation_Output_Data_t *data
 		}
 	else if (data->operation == 2)
 		{	// StartSolo
-		LogTextLfP(PSTR(" StartSolo"));
+		if (DoDebug(DEBUG_DETAIL))
+			LogTextLfP(PSTR(" StartSolo"));
 
 		// Stop all first
 		StopAllEffects();
@@ -434,12 +468,19 @@ void FfbHandle_EffectOperation(USB_FFBReport_EffectOperation_Output_Data_t *data
 		}
 	else if (data->operation == 3)
 		{	// Stop
-		LogTextLfP(PSTR(" Stop"));
+		if (DoDebug(DEBUG_DETAIL))
+			LogTextLfP(PSTR(" Stop"));
 
 		StopEffect(data->effectBlockIndex);
 		}
 	else
-		LogBinaryLf(&data->operation, sizeof(data->operation));
+		{
+		if (DoDebug(DEBUG_DETAIL))
+			{
+			LogTextLfP(PSTR(" Unknown operation"));
+			LogBinaryLf(&data->operation, sizeof(data->operation));
+			}
+		}
 	}
 
 
@@ -447,8 +488,11 @@ void FfbHandle_BlockFree(USB_FFBReport_BlockFree_Output_Data_t *data)
 	{
 	uint8_t eid = data->effectBlockIndex;
 
-	LogTextP(PSTR("Block Free: "));
-	LogBinaryLf(&eid, 1);
+	if (DoDebug(DEBUG_DETAIL))
+		{
+		LogTextP(PSTR("Block Free: "));
+		LogBinaryLf(&eid, 1);
+		}
 
 	if (eid == 0xFF)
 		{	// all effects

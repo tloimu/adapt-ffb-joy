@@ -225,7 +225,7 @@ void FfbproSetEnvelope(
 	volatile TEffectState* effect)
 {
 	uint8_t eid = data->effectBlockIndex;
-
+	
 	/*
 	USB effect data:
 		uint8_t	reportId;	// =2
@@ -253,6 +253,19 @@ void FfbproSetEnvelope(
 		uint16_t param1;	// Constant: positive=7f 00, negative=01 01, Other effects: 01 01
 		uint16_t param2;	// Constant: 00 00, Other effects 01 01
 	*/
+	
+	if (DoDebug(DEBUG_DETAIL))
+		{
+		LogTextP(PSTR("Set Envelope:"));
+		LogBinaryLf(data, sizeof(USB_FFBReport_SetEnvelope_Output_Data_t));
+		LogTextP(PSTR("  id    =")); LogBinaryLf(&eid, sizeof(eid));
+		LogTextP(PSTR("  attack=")); LogBinaryLf(&data->attackLevel, sizeof(data->attackLevel));
+		LogTextP(PSTR("  fade  =")); LogBinaryLf(&data->fadeLevel, sizeof(data->fadeLevel));
+		LogTextP(PSTR("  attackTime=")); LogBinaryLf(&data->attackTime, sizeof(data->attackTime));
+		LogTextP(PSTR("  fadeTime  =")); LogBinaryLf(&data->fadeTime, sizeof(data->fadeTime));
+		FlushDebugBuffer();
+		}
+		
 	volatile FFP_MIDI_Effect_Basic *midi_data = (volatile FFP_MIDI_Effect_Basic *)&effect->data;
 
 	effect->usb_attackLevel = data->attackLevel;
@@ -297,6 +310,17 @@ void FfbproSetCondition(
 		uint16_t offsetAxis0; // not in friction
 		uint16_t offsetAxis1; // not in friction
 	*/
+	
+	if (DoDebug(DEBUG_DETAIL))
+		{
+		LogTextP(PSTR("Set Condition:"));
+		LogBinaryLf(data, sizeof(USB_FFBReport_SetCondition_Output_Data_t));
+		LogTextP(PSTR("  id   =")); LogBinaryLf(&eid, sizeof(eid));
+		LogTextP(PSTR("  block =")); LogBinaryLf(&data->parameterBlockOffset, sizeof(data->parameterBlockOffset));
+		LogTextP(PSTR("  offset=")); LogBinaryLf(&data->cpOffset, sizeof(data->cpOffset));
+		LogTextP(PSTR("  coeff+=")); LogBinaryLf(&data->positiveCoefficient, sizeof(data->positiveCoefficient));
+		FlushDebugBuffer();
+		}
 
 	switch (common_midi_data->waveForm) {
 		case 0x0d:	// spring (midi: 0x0d)
@@ -374,6 +398,19 @@ void FfbproSetPeriodic(
 
 		Offset values other than zero do not work and thus it is ignored on FFP
 	*/
+	
+	if (DoDebug(DEBUG_DETAIL))
+		{
+		LogTextP(PSTR("Set Periodic:"));
+		LogBinaryLf(data, sizeof(USB_FFBReport_SetPeriodic_Output_Data_t));
+		LogTextP(PSTR("  id=")); LogBinaryLf(&eid, sizeof(eid));
+		LogTextP(PSTR("  magnitude=")); LogBinaryLf(&data->magnitude, sizeof(data->magnitude));
+		LogTextP(PSTR("  offset   =")); LogBinaryLf(&data->offset, sizeof(data->offset));
+		LogTextP(PSTR("  phase    =")); LogBinaryLf(&data->phase, sizeof(data->phase));
+		LogTextP(PSTR("  period   =")); LogBinaryLf(&data->period, sizeof(data->period));
+		FlushDebugBuffer();
+		}
+	
 	volatile FFP_MIDI_Effect_Basic *midi_data = (volatile FFP_MIDI_Effect_Basic *)&effect->data;
 
 	effect->usb_magnitude = data->magnitude;
@@ -443,6 +480,16 @@ void FfbproSetConstantForce(
 		uint16_t param1;	// Constant: positive=7f 00, negative=01 01, Other effects: 01 01
 		uint16_t param2;	// Constant: 00 00, Other effects 01 01
 	*/
+	
+	if (DoDebug(DEBUG_DETAIL))
+		{
+		LogTextP(PSTR("Set Constant Force:"));
+		LogBinaryLf(data, sizeof(USB_FFBReport_SetConstantForce_Output_Data_t));
+		LogTextP(PSTR("  id=")); LogBinaryLf(&eid, sizeof(eid));
+		LogTextP(PSTR("  magnitude=")); LogBinaryLf(&data->magnitude, sizeof(data->magnitude));
+		FlushDebugBuffer();
+		}
+	
 	volatile FFP_MIDI_Effect_Basic *midi_data = (volatile FFP_MIDI_Effect_Basic *)&effect->data;
 
 	effect->usb_magnitude = data->magnitude;
@@ -467,11 +514,16 @@ void FfbproSetRampForce(
 	USB_FFBReport_SetRampForce_Output_Data_t* data,
 	volatile TEffectState* effect)
 {
-	LogTextP(PSTR("Set Ramp Force:"));
-	LogBinaryLf(data, sizeof(USB_FFBReport_SetRampForce_Output_Data_t));
-	LogTextP(PSTR("  id=")); LogBinaryLf(&data->reportId, sizeof(data->reportId));
-	LogTextP(PSTR("  start=")); LogBinaryLf(&data->start, sizeof(data->start));
-	LogTextP(PSTR("  end  =")); LogBinaryLf(&data->end, sizeof(data->end));
+	if (DoDebug(DEBUG_DETAIL))
+		{
+		uint8_t eid = data->effectBlockIndex;
+		LogTextP(PSTR("Set Ramp Force:"));
+		LogBinaryLf(data, sizeof(USB_FFBReport_SetRampForce_Output_Data_t));
+		LogTextP(PSTR("  id=")); LogBinaryLf(&eid, sizeof(eid));
+		LogTextP(PSTR("  start=")); LogBinaryLf(&data->start, sizeof(data->start));
+		LogTextP(PSTR("  end  =")); LogBinaryLf(&data->end, sizeof(data->end));
+		FlushDebugBuffer();
+		}
 
 	// FFP supports only ramp up from MIN to MAX and ramp down from MAX to MIN?
 	/*
