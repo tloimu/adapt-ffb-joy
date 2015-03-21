@@ -38,7 +38,7 @@ Below are the pins to connect for the joystick.
 || VCC || 1 || Vcc for joystick ||
 || GND || 4 || GND for joystick ||
 
-Then you likely need the two 1nF capacitors between AVR pins PB4 and PB5 and ground. Some configurations work better without these two capacitors. For example, my breadboard setup worked only without them as seen in below picture.
+Then you likely need the two 1nF capacitors between AVR pins PB4 and PB5 and ground. Some configurations work better without or with different values of these two capacitors. For example, my breadboard setup worked only without them as seen in below picture. See comments-section below on people's experience on these as there seem to even be different versions of the joystick asking for different capacitor setups.
 
 Then for the extra trim pots, connect PF0, PF1, PF4 and PF5 to each trim pot's center connector and GND and Vcc on the ends. These trim pots are completely optional and are not required to be connected for joystick to work. They only provide additional axis on top of the Sidewinder's own four axis.
 
