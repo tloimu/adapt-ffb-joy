@@ -21,7 +21,6 @@ and some projects and discussions:
 == Windows USB HID Driver ==
 
 Links and information that relate to Windows HID driver:
-  * [http://www.lvr.com/forum/index.php?action=printpage;topic=417.0 Samples of some FFB registry entries]
   * Discussion [http://www.microchip.com/forums/tm.aspx?m=487478&mpage=1&key=&#498305 at Microchip forum about Windows FFB driver registry settings]
   * [http://www.microchip.com/forums/m320225-print.aspx Yet another discussion at Microchip forums]
   * Microsoft docs on [http://msdn.microsoft.com/en-us/library/ff542434(VS.85).aspx OEMForceFeedback registry settings]
