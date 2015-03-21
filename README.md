@@ -11,3 +11,5 @@ The adapter has been extensively play tested to work with e.g. IL-2 combat fligh
 Work is going on to extend the support to MS Sidewinder Force Feedback Wheel also. Some basic support already exists in the project.
 
 For more information, see [Adapt-ffb-joy Wiki] (https://github.com/tloimu/adapt-ffb-joy/blob/wiki/README.md)
+
+The firmware software project is configured to compile for ATmega32U4 with WinAVR-20100110 or newer version.
