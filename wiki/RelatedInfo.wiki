@@ -9,7 +9,7 @@ This page gathers interesting and potentially useful FFB and FFB joystick relate
 
 Here are links to some basic background information:
   * [http://www.usb.org/developers/devclass_docs/HID1_11.pdf Device Class Definition for Human Interface Devices (HID)]
-  * For force feedback USB devices the official HID document [http://www.usb.org/developers/devclass_docs/pid1_01.pdf USB Physical Interface Device (PID) Class]
+  * For force feedback USB devices the official HID document [http://www.usb.org/developers/hidpage/pid1_01.pdf USB Physical Interface Device (PID) Class]
 
 and some projects and discussions:
   * [https://www.microchip.com/forums/tm.aspx?m=320225&mpage=2&print=true A promising discussion of a working FFB HID] on Microchip's forums
