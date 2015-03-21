@@ -13,7 +13,7 @@ Here are links to some basic background information:
 
 and some projects and discussions:
   * [https://www.microchip.com/forums/tm.aspx?m=320225&mpage=2&print=true A promising discussion of a working FFB HID] on Microchip's forums
-  * [http://www.lvr.com/hidpage.htm Jan Axelson's USB HID] and there [http://www.inebriated-innovation.org/ifeel/ his experiments with force feedback of Logitech iFeel Mouse]
+  * [http://janaxelson.com/hidpage.htm Jan Axelson's USB HID]
   * Discussion of [http://forums.obdev.at/viewtopic.php?f=8&t=4313&start=15 force feedback HID in Object Development Forums]
   * Another discussion at [http://www.microchip.com/forums/m487478-print.aspx Microship's forums]
   * Yet one discussion [http://forums.obdev.at/viewtopic.php?f=8&t=4313 in ObjDev about non-USB AVRs and FFB HID]
