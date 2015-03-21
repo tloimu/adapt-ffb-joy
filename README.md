@@ -10,17 +10,17 @@ Work is going on to extend the support to MS Sidewinder Force Feedback Wheel als
 
 # Build It Yourself #
 
-[Here are the building instructions](http://code.google.com/p/adapt-ffb-joy/wiki/HowToBuild) with images and circuit diagrams. This project offers instructions only. If you want someone else to build it for you, you need to look for volunteers outside of these project pages - sorry.
+[Here are the building instructions](HowToBuild.md) with images and circuit diagrams. This project offers instructions only. If you want someone else to build it for you, you need to look for volunteers outside of these project pages - sorry.
 
 # About the Project #
 
 Documentation and code for adapting various force feedback (FFB) effect protocols to USB-devices. Useful for pointing devices like joysticks.
 
 The project's Wiki contains:
-  * [Project Plan](http://code.google.com/p/adapt-ffb-joy/wiki/Project) and to-do-list
-  * [Links to related information](http://code.google.com/p/adapt-ffb-joy/wiki/RelatedInfo)  to get you started
-  * [Document of MS Sidewinder force feedback MIDI protocol](http://code.google.com/p/adapt-ffb-joy/wiki/SidewinderFFBMIDI) as of been reverse engineered
-  * [USB HID descriptor with force feedback](http://code.google.com/p/adapt-ffb-joy/wiki/USBFfbHid) development page
+  * [Project Plan](Project.md) and to-do-list
+  * [Links to related information](RelatedInfo.md)  to get you started
+  * [Document of MS Sidewinder force feedback MIDI protocol](SidewinderFFBMIDI.md) as of been reverse engineered
+  * [USB HID descriptor with force feedback](USBFfbHid.md) development page
 
 The first implementation targeted Microsoft Sidewinder Force Feedback Pro (FFP) joystick and integrated it with [3DP-Vert-project](http://code.google.com/p/sw3dprousb) to make it a full featured USB-adapter for the FFP. Thus, the microcontroller platform of choice is now AVR (Teensy 2.0, in fact), although most of the code and documentation should be made easily portable to other platforms too. There is already another project to make [the adapter as a library for Arduino](http://code.google.com/p/sidewinder-arduino/).
 
