@@ -2,11 +2,11 @@
 
 Adapt-FFB-Joy is an AVR micro-controller based device that looks like a joystick with advanced force feedback features in a Windows machine without need for installing any device drivers to PC.
 
-Now already, it allows connecting a Microsoft Sidewinder Force Feedback Pro (FFP) joystick (with a game port connector) to Windows XP/Vista/7/8 (32-bit and 64-bit) as a standard **USB joystick with force feedback** and **no need to install any device drivers**. The adapter also allows to solder a few additional trim pots to work e.g. as elevator trims, aileron trims and rudder pedals in your favorite simulator game.
+Now already, it allows connecting a Microsoft Sidewinder Force Feedback Pro (FFP) joystick (with a game port connector) to Windows XP/Vista/7/8/10 (32-bit and 64-bit) as a standard **USB joystick with force feedback** and **no need to install any device drivers**. The adapter also allows to solder a few additional trim pots to work e.g. as elevator trims, aileron trims and rudder pedals in your favorite simulator game.
 
-The adapter has been extensively play tested to work with e.g. IL-2 combat flight simulator. It has also been seen working with other games like Mechwarrior, Rise of Flight, World of Warplanes and War Thunder.
+The adapter has been extensively play tested to work with e.g. IL-2 1946 combat flight simulator. It has also been seen working with other games like Mechwarrior, Rise of Flight, World of Warplanes and War Thunder. Now briefly tested to work with the new IL-2 Sturmovik Battle of Stalingrad too.
 
-Work is going on to extend the support to MS Sidewinder Force Feedback Wheel also.
+There is also some experimental work started to extend the support to MS Sidewinder Force Feedback Wheel too. But, this has not been completed.
 
 # Build It Yourself #
 
@@ -28,4 +28,4 @@ The secondary target is to create documentation and even some framework for adap
 
 There is also a development effort put to make the device configurable by e.g. a standard serial terminal application. This is achieved by making the adapter device a composite  USB device having both joystick and virtual serial devices. Now the device can be configured to disable/enable certain force feedback effects. The adapter can also be somewhat debugged using the virtual serial line.
 
-This project was originally hosted by Google Code, but has now been moved to GitHub as Google Code is passing to history.
+This project was originally hosted by Google Code, but has now been moved here to GitHub as Google Code has passed to history.
