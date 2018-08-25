@@ -4,13 +4,13 @@ This page contains the project's plan and status. It lists what is still missing
 
 # What works #
 
-It is plug-n-play for Windows (i.e. doesn't need any non-built-in drivers) as it conforms to use Windows' PID built-in driver. Works all the way from 32-bit Windows XP to 32-bit and 64-bit Windows 7 and 8.
+It is plug-n-play for Windows (i.e. doesn't need any non-built-in drivers) as it conforms to use Windows' PID built-in driver. Works all the way from 32-bit Windows XP to 32-bit and 64-bit Windows 7, 8 and 10.
 
 All effect types work using e.g. FEdit. Also, modifying effects already playing on-fly work almost as much as FFP allows them. There is an issue with ramps still and they are effectively played as constant forces.
 
-Technology stack is using
+Technology stack is composed of
   * AVR Teensy 2.0 for hardware
-  * 3DPVert for reading Sidewinder joystick
+  * 3DPVert for reading Sidewinder joystick axis and buttons
   * LUFA for USB
   * USB descriptors for Human Interface Device with Physical Interface Device parts for force feedback compatible with Windows built-in HID and PID drivers
 
@@ -27,7 +27,7 @@ Things to do still.
 
 ## Support for Sidewinder Force Feedback Wheel ##
 
-The work is on-going and progressing quite well even tho there is still a lot of details to work on.
+Started by another developer, but not completed and seemingly abandoned since.
 
 ## Debugging and configuration of adapter via USB serial ##
 
