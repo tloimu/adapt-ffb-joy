@@ -11,9 +11,7 @@ Parts you need
   * 220 Ohm resistors
   * 2 x 1 nF capacitors
 
-and below is the full circuit diagram.
-
-![http://adapt-ffb-joy.googlecode.com/files/adaptffbjoy-circuit.png](http://adapt-ffb-joy.googlecode.com/files/adaptffbjoy-circuit.png)
+and ![here is the full circuit diagram](https://github.com/tloimu/adapt-ffb-joy/blob/master/downloads/adaptffbjoy-circuit.png).
 
 The above circuit diagram is also available as [TinyCad](http://sourceforge.net/projects/tinycad/) design file among the source code files.
 
@@ -49,4 +47,4 @@ Then for the extra trim pots, connect PF0, PF1, PF4 and PF5 to each trim pot's c
 
 The Pedal1 and Pedal2 are combined to form an axis called "Slider" for the joystick in Windows.
 
-![http://adapt-ffb-joy.googlecode.com/files/adaptffbjoy-breadboard.jpg](http://adapt-ffb-joy.googlecode.com/files/adaptffbjoy-breadboard.jpg)
+![Picture of a build on a breadboard](https://github.com/tloimu/adapt-ffb-joy/blob/master/downloads/adaptffbjoy-breadboard.jpg)
