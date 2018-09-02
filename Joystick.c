@@ -100,11 +100,8 @@ void Joystick_Init(void)
 
 	WaitMs(1000);
 
-	// Force feedback
-	FfbInitMidi();
-
 	// ADC for extra controls
-	DDRF = 0; // all inputs
+/*	DDRF = 0; // all inputs
 //	PORTF |= 0xff; // all pullups enabled
 
 	// Init and enable ADC
@@ -117,6 +114,9 @@ void Joystick_Init(void)
 	ADCSRA |= (1 << ADIE);  	// Enable ADC Interrupt 
 
 	ADCSRA |= (1 << ADSC); 		// Go ADC
+*/
+	// Force feedback
+	FfbInit();
 	}
 
 /** Configures the board hardware and chip peripherals for the joystick's functionality. */
@@ -205,7 +205,9 @@ int Joystick_CreateInputReport(uint8_t inReportId, USB_JoystickReport_Data_t* co
 	//	ADC4 - Left Pedal
 	//	ADC5 - Right Pedal
 
-	if (ADC_is_ready)
+/* ???? TODO: Re-enable some of the extra analog axis
+
+	if (0 && ADC_is_ready)
 		{
 		ADC_is_ready = 0;
 
@@ -237,7 +239,14 @@ int Joystick_CreateInputReport(uint8_t inReportId, USB_JoystickReport_Data_t* co
 		ADMUX |= (0b111 & added_controls_adc.sampledChannel);
 		ADCSRA|=(1<<ADSC);
 		}
+*/
 
+	// ???? For now: send the current forces as Rx and Ry
+	int16_t fx = 0;
+	int16_t fy = 0;
+	L298N_GetLatestMotors(&fx, &fy);
+	added_controls_adc.trim1 = 127 + fx;
+	added_controls_adc.trim2 = 127 + fy;
 /*
 5 wwwwwwww
 4 aaaaaaww 

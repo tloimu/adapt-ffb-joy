@@ -48,7 +48,7 @@ bool DoDebug(const uint8_t type);
 //#define DEBUG_ENABLE_UART
 #define DEBUG_ENABLE_USB
 
-#define DEBUG_BUFFER_SIZE 512
+#define DEBUG_BUFFER_SIZE 128
 
 // Debugging utilities
 

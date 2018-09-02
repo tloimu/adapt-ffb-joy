@@ -1,6 +1,6 @@
 # Hey Emacs, this is a -*- makefile -*-
 #----------------------------------------------------------------------------
-# WinAVR Makefile Template written by Eric B. Weddington, Jörg Wunsch, et al.
+# WinAVR Makefile Template written by Eric B. Weddington, Jï¿½rg Wunsch, et al.
 #  >> Modified for use with the LUFA project. <<
 #  >> Modified for use with the adapt-ffb-joy-project. <<
 #
@@ -136,9 +136,9 @@ include $(LUFA_PATH)/LUFA/makefile
 SRC = Joystick.c \
 	  Descriptors.c \
       main.c \
+	  ffb-abacus.c \
+	  ffb-direct.c \
 	  ffb.c \
-	  ffb-pro.c \
-	  ffb-wheel.c \
       3DPro.c \
       debug.c \
 	  $(LUFA_SRC_USB)

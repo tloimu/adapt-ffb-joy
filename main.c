@@ -61,6 +61,10 @@ static CDC_LineEncoding_t LineEncoding1 = { .BaudRateBPS = 0,
 /** Main program entry point. This routine configures the hardware required by the application, then
  *  enters a loop to run the application tasks in sequence.
  */
+
+#include <avr/pgmspace.h>
+const char pad[140] PROGMEM = { 1 }; // AVR Linker bug when linking with <math.h>! Remove or changes if issues arise!
+#include "ffb-direct.h"
 int main(void)
 	{
 	SetupHardware();
@@ -239,6 +243,10 @@ void EVENT_USB_Device_ControlRequest(void)
 					/* Write the report data to the control endpoint */
 					Endpoint_Write_Control_Stream_LE(&JoystickReportData, sizeof(USB_JoystickReport_Data_t));
 					Endpoint_ClearOUT();
+
+					// Run the effects as positions may change them
+					// ???? TODO: Feed the x, y and dt
+					FfbOnMaintainEffects(JoystickReportData.X, JoystickReportData.Y, 1);
 					}
 
 				//LogData("  -> GetReport:", 0, &USB_ControlRequest, sizeof(USB_ControlRequest));
@@ -374,6 +382,10 @@ void HID_Task(void)
 
 		/* Finalize the stream transfer to send the last packet */
 		Endpoint_ClearIN();
+
+		// Run the effects as positions may change them
+		// ???? TODO: Feed the x, y and dt
+		FfbOnMaintainEffects(JoystickReportData.X, JoystickReportData.Y, 1);
 		}
 
 	// Receive FFB data
@@ -696,6 +708,7 @@ void CompletedCommandDataFromCOMSerial(char command, char *data, uint16_t len)
 void DoCommandListEffects()
 	{
 	LogTextP(PSTR("Effects:\n"));
+/*
 	uint8_t i = 0;
 	while (FfbDebugListEffects(&i))
 		FlushDebugBuffer();
@@ -707,7 +720,7 @@ void DoCommandListEffects()
 	if (gDisabledEffects.triangles)
 		LogTextP(PSTR(" Triangles disabled\n"));
 	if (gDisabledEffects.sines)
-		LogTextP(PSTR(" Sines disabled\n"));
+		LogTextP(PSTR(" Sines disabled\n"));*/
 	}
 
 void DoCommandSetDebug(char command, char value)
@@ -720,6 +733,7 @@ void DoCommandSetDebug(char command, char value)
 
 void DoCommandSetEffectType(char effectType, char value)
 	{
+	/*
 	if (effectType == 8)
 		FfbEnableSprings(value);
 	else if (effectType == 1)
@@ -732,16 +746,17 @@ void DoCommandSetEffectType(char effectType, char value)
 		{
 		LogTextLfP(PSTR("Error: unknown effect type to enable/disable"));
 		}
+		*/
 	}
 
 void DoCommandSetEffectAtIndex(uint8_t effectIndex, char value)
 	{
-	FfbEnableEffectId(effectIndex, value);
+	// FfbEnableEffectId(effectIndex, value);
 	}
 
 void DoCommandSendMidi(uint8_t *data, uint16_t len)
 	{
-	FfbSendData(data, len);
+	FfbSendRawData(data, len);
 	}
 
 void DoCommandSimulateUsbReceive(uint8_t *data, uint16_t len)

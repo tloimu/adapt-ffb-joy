@@ -72,4 +72,6 @@ void FfbproCreateNewEffect(USB_FFBReport_CreateNewEffect_Feature_Data_t* inData,
 
 uint8_t FfbproUsbToMidiEffectType(uint8_t usb_effect_type);
 
+void FfbproMaintainEffects(void);
+
 #endif // _FFB_PRO_

@@ -347,3 +347,5 @@ void FfbwheelCreateNewEffect(
 	break;
 	}
 }
+
+void FfbWheelMaintainEffects(void) {}

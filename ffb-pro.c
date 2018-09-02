@@ -768,3 +768,4 @@ void FfbproCreateNewEffect(
 		midi_data->param2 = 0x0101;
 }
 
+void FfbproMaintainEffects(void) {}

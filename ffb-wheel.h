@@ -117,4 +117,6 @@ void FfbwheelCreateNewEffect(USB_FFBReport_CreateNewEffect_Feature_Data_t* inDat
 
 uint8_t FfbwheelUsbToMidiEffectType(uint8_t usb_effect_type);
 
+void FfbWheelMaintainEffects(void);
+
 #endif // _FFB_WHEEL_

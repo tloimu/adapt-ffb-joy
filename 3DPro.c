@@ -303,7 +303,8 @@ void FA_NAKED( init_hw ) ( void )
 			CheckFFPPkt( ffp_packet, DATSZFFP ) )
 			{
 				sw_id = SW_ID_FFP ;
-				FfbSetDriver(0);
+				// FfbSetDriver(0); // Force Feedback Pro MIDI
+				FfbSetDriver(0); // Force Feedback Pro with Direct L298N
 				break;
 			}
 
@@ -311,7 +312,7 @@ void FA_NAKED( init_hw ) ( void )
 			CheckFFPPkt( ffp_packet, DATSZFFPW ) )
 			{
 				sw_id = SW_ID_FFPW ;
-				FfbSetDriver(1);
+				FfbSetDriver(0);
 				break;
 			}
 			

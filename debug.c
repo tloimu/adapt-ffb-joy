@@ -38,7 +38,7 @@ const uint8_t DEBUG_DETAIL = 4; // Include additional details to debug data
 // Controls whether debug data contains data as hexadecimal ascii instead of as raw binary
 #define DEBUG_DATA_AS_HEX
 
-volatile uint8_t gDebugMode = 2; // set this higher if debugging e.g. at startup is needed
+volatile uint8_t gDebugMode = 0; // set this higher if debugging e.g. at startup is needed
 
 #ifdef DEBUG_ENABLE_USB
 // Internal buffer for sending debug data to USB COM-port

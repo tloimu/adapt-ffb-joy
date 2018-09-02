@@ -1,0 +1,12 @@
+.dep/
+.vs/
+__avr_gdbinit
+test/Debug/
+*.o
+*.lst
+*.elf
+*.sym
+*.lss
+*.map
+*.hex
+*.eep
