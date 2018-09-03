@@ -18,7 +18,7 @@ const TimeUnit DURATION_INFINITE = -1;
 
 #define MAX_EFFECTS 20
 
-Effect gEffects[MAX_EFFECTS];
+FfbEffect gEffects[MAX_EFFECTS];
 float gEffectGain;
 
 typedef struct
@@ -37,17 +37,17 @@ uint8_t findFreeEffectSlot(void)
     return INVALID_EFFECT;
 }
 
-void calcRemainingPhaseTime(Effect *effect, TimeUnit timeDelta)
+void calcRemainingPhaseTime(FfbEffect *effect, TimeUnit timeDelta)
 {
     // ???? TODO:
 }
 
-void calcEnvelope(Effect *effect, ForceVector *ioForce)
+void calcEnvelope(FfbEffect *effect, ForceVector *ioForce)
 {
     // ???? TODO:
 }
 
-void calcEffectLocalTime(Effect *effect, TimeUnit dt)
+void calcEffectLocalTime(FfbEffect *effect, TimeUnit dt)
 {
     // Advance the effect's local time with the given dt and stop it if duration has passed
     effect->localTime += dt;
@@ -60,9 +60,9 @@ void calcEffectLocalTime(Effect *effect, TimeUnit dt)
 // Implement the force calculation functions
 // -------------------------------------------
 
-void calcEffectConstant(Effect* effect, PositionUnit x, PositionUnit y, PositionUnit dx, PositionUnit dy, TimeUnit timeDelta, ForceUnit* outFx, ForceUnit* outFy);
+void calcEffectConstant(FfbEffect* effect, PositionUnit x, PositionUnit y, PositionUnit dx, PositionUnit dy, TimeUnit timeDelta, ForceUnit* outFx, ForceUnit* outFy);
 void calcEffectConstant(
-    Effect* effect, PositionUnit x, PositionUnit y, PositionUnit dx, PositionUnit dy, TimeUnit timeDelta, ForceUnit* outFx, ForceUnit* outFy)
+    FfbEffect* effect, PositionUnit x, PositionUnit y, PositionUnit dx, PositionUnit dy, TimeUnit timeDelta, ForceUnit* outFx, ForceUnit* outFy)
     {
         ForceVector force;
         force.x = 0;
@@ -76,40 +76,40 @@ void calcEffectConstant(
         *outFy = force.y;
     }
 
-void calcEffectSine(Effect* effect, PositionUnit x, PositionUnit y, PositionUnit dx, PositionUnit dy, TimeUnit timeDelta, ForceUnit* outFx, ForceUnit* outFy);
+void calcEffectSine(FfbEffect* effect, PositionUnit x, PositionUnit y, PositionUnit dx, PositionUnit dy, TimeUnit timeDelta, ForceUnit* outFx, ForceUnit* outFy);
 void calcEffectSine(
-    Effect* effect, PositionUnit x, PositionUnit y, PositionUnit dx, PositionUnit dy, TimeUnit timeDelta, ForceUnit* outFx, ForceUnit* outFy)
+    FfbEffect* effect, PositionUnit x, PositionUnit y, PositionUnit dx, PositionUnit dy, TimeUnit timeDelta, ForceUnit* outFx, ForceUnit* outFy)
     {
         // ???? TODO:
         calcRemainingPhaseTime(effect, timeDelta);
     }
 
-void calcEffectSquare(Effect* effect, PositionUnit x, PositionUnit y, PositionUnit dx, PositionUnit dy, TimeUnit timeDelta, ForceUnit* outFx, ForceUnit* outFy);
+void calcEffectSquare(FfbEffect* effect, PositionUnit x, PositionUnit y, PositionUnit dx, PositionUnit dy, TimeUnit timeDelta, ForceUnit* outFx, ForceUnit* outFy);
 void calcEffectSquare(
-    Effect* effect, PositionUnit x, PositionUnit y, PositionUnit dx, PositionUnit dy, TimeUnit timeDelta, ForceUnit* outFx, ForceUnit* outFy)
+    FfbEffect* effect, PositionUnit x, PositionUnit y, PositionUnit dx, PositionUnit dy, TimeUnit timeDelta, ForceUnit* outFx, ForceUnit* outFy)
     {
         // ???? TODO:
         calcRemainingPhaseTime(effect, timeDelta);
     }
 
-void calcEffectTriangle(Effect* effect, PositionUnit x, PositionUnit y, PositionUnit dx, PositionUnit dy, TimeUnit timeDelta, ForceUnit* outFx, ForceUnit* outFy);
+void calcEffectTriangle(FfbEffect* effect, PositionUnit x, PositionUnit y, PositionUnit dx, PositionUnit dy, TimeUnit timeDelta, ForceUnit* outFx, ForceUnit* outFy);
 void calcEffectTriangle(
-    Effect* effect, PositionUnit x, PositionUnit y, PositionUnit dx, PositionUnit dy, TimeUnit timeDelta, ForceUnit* outFx, ForceUnit* outFy)
+    FfbEffect* effect, PositionUnit x, PositionUnit y, PositionUnit dx, PositionUnit dy, TimeUnit timeDelta, ForceUnit* outFx, ForceUnit* outFy)
     {
         // ???? TODO:
         calcRemainingPhaseTime(effect, timeDelta);
     }
 
-void calcEffectFriction(Effect* effect, PositionUnit x, PositionUnit y, PositionUnit dx, PositionUnit dy, TimeUnit timeDelta, ForceUnit* outFx, ForceUnit* outFy);
+void calcEffectFriction(FfbEffect* effect, PositionUnit x, PositionUnit y, PositionUnit dx, PositionUnit dy, TimeUnit timeDelta, ForceUnit* outFx, ForceUnit* outFy);
 void calcEffectFriction(
-    Effect* effect, PositionUnit x, PositionUnit y, PositionUnit dx, PositionUnit dy, TimeUnit timeDelta, ForceUnit* outFx, ForceUnit* outFy)
+    FfbEffect* effect, PositionUnit x, PositionUnit y, PositionUnit dx, PositionUnit dy, TimeUnit timeDelta, ForceUnit* outFx, ForceUnit* outFy)
     {
         // ???? TODO: use axis accelection as metric
     }
 
-void calcEffectInertia(Effect* effect, PositionUnit x, PositionUnit y, PositionUnit dx, PositionUnit dy, TimeUnit timeDelta, ForceUnit* outFx, ForceUnit* outFy);
+void calcEffectInertia(FfbEffect* effect, PositionUnit x, PositionUnit y, PositionUnit dx, PositionUnit dy, TimeUnit timeDelta, ForceUnit* outFx, ForceUnit* outFy);
 void calcEffectInertia(
-    Effect* effect, PositionUnit x, PositionUnit y, PositionUnit dx, PositionUnit dy, TimeUnit timeDelta, ForceUnit* outFx, ForceUnit* outFy)
+    FfbEffect* effect, PositionUnit x, PositionUnit y, PositionUnit dx, PositionUnit dy, TimeUnit timeDelta, ForceUnit* outFx, ForceUnit* outFy)
     {
         // ???? TODO:
     }
@@ -126,9 +126,9 @@ void trimForces(ForceUnit *fx, ForceUnit *fy)
         *fy = -255;
 }
 
-void calcEffectSpring(Effect* effect, PositionUnit x, PositionUnit y, PositionUnit dx, PositionUnit dy, TimeUnit timeDelta, ForceUnit* outFx, ForceUnit* outFy);
+void calcEffectSpring(FfbEffect* effect, PositionUnit x, PositionUnit y, PositionUnit dx, PositionUnit dy, TimeUnit timeDelta, ForceUnit* outFx, ForceUnit* outFy);
 void calcEffectSpring(
-    Effect* effect, PositionUnit x, PositionUnit y, PositionUnit dx, PositionUnit dy, TimeUnit timeDelta, ForceUnit* outFx, ForceUnit* outFy)
+    FfbEffect* effect, PositionUnit x, PositionUnit y, PositionUnit dx, PositionUnit dy, TimeUnit timeDelta, ForceUnit* outFx, ForceUnit* outFy)
     {
         ForceVector force;
         force.x = 0;
@@ -151,37 +151,37 @@ void calcEffectSpring(
         *outFy = force.y;
     }
 
-void calcEffectSawtoothDown(Effect* effect, PositionUnit x, PositionUnit y, PositionUnit dx, PositionUnit dy, TimeUnit timeDelta, ForceUnit* outFx, ForceUnit* outFy);
+void calcEffectSawtoothDown(FfbEffect* effect, PositionUnit x, PositionUnit y, PositionUnit dx, PositionUnit dy, TimeUnit timeDelta, ForceUnit* outFx, ForceUnit* outFy);
 void calcEffectSawtoothDown(
-    Effect* effect, PositionUnit x, PositionUnit y, PositionUnit dx, PositionUnit dy, TimeUnit timeDelta, ForceUnit* outFx, ForceUnit* outFy)
+    FfbEffect* effect, PositionUnit x, PositionUnit y, PositionUnit dx, PositionUnit dy, TimeUnit timeDelta, ForceUnit* outFx, ForceUnit* outFy)
     {
         // ???? TODO:
     }
 
-void calcEffectSawtoothUp(Effect* effect, PositionUnit x, PositionUnit y, PositionUnit dx, PositionUnit dy, TimeUnit timeDelta, ForceUnit* outFx, ForceUnit* outFy);
+void calcEffectSawtoothUp(FfbEffect* effect, PositionUnit x, PositionUnit y, PositionUnit dx, PositionUnit dy, TimeUnit timeDelta, ForceUnit* outFx, ForceUnit* outFy);
 void calcEffectSawtoothUp(
-    Effect* effect, PositionUnit x, PositionUnit y, PositionUnit dx, PositionUnit dy, TimeUnit timeDelta, ForceUnit* outFx, ForceUnit* outFy)
+    FfbEffect* effect, PositionUnit x, PositionUnit y, PositionUnit dx, PositionUnit dy, TimeUnit timeDelta, ForceUnit* outFx, ForceUnit* outFy)
     {
         // ???? TODO:
     }
 
-void calcEffectRamp(Effect* effect, PositionUnit x, PositionUnit y, PositionUnit dx, PositionUnit dy, TimeUnit timeDelta, ForceUnit* outFx, ForceUnit* outFy);
+void calcEffectRamp(FfbEffect* effect, PositionUnit x, PositionUnit y, PositionUnit dx, PositionUnit dy, TimeUnit timeDelta, ForceUnit* outFx, ForceUnit* outFy);
 void calcEffectRamp(
-    Effect* effect, PositionUnit x, PositionUnit y, PositionUnit dx, PositionUnit dy, TimeUnit timeDelta, ForceUnit* outFx, ForceUnit* outFy)
+    FfbEffect* effect, PositionUnit x, PositionUnit y, PositionUnit dx, PositionUnit dy, TimeUnit timeDelta, ForceUnit* outFx, ForceUnit* outFy)
     {
         // ???? TODO:
     }
 
-void calcEffectDamper(Effect* effect, PositionUnit x, PositionUnit y, PositionUnit dx, PositionUnit dy, TimeUnit timeDelta, ForceUnit* outFx, ForceUnit* outFy);
+void calcEffectDamper(FfbEffect* effect, PositionUnit x, PositionUnit y, PositionUnit dx, PositionUnit dy, TimeUnit timeDelta, ForceUnit* outFx, ForceUnit* outFy);
 void calcEffectDamper(
-    Effect* effect, PositionUnit x, PositionUnit y, PositionUnit dx, PositionUnit dy, TimeUnit timeDelta, ForceUnit* outFx, ForceUnit* outFy)
+    FfbEffect* effect, PositionUnit x, PositionUnit y, PositionUnit dx, PositionUnit dy, TimeUnit timeDelta, ForceUnit* outFx, ForceUnit* outFy)
     {
         // ???? TODO: use axis velocity as metric
     }
 
-void calcEffectCustom(Effect* effect, PositionUnit x, PositionUnit y, PositionUnit dx, PositionUnit dy, TimeUnit timeDelta, ForceUnit* outFx, ForceUnit* outFy);
+void calcEffectCustom(FfbEffect* effect, PositionUnit x, PositionUnit y, PositionUnit dx, PositionUnit dy, TimeUnit timeDelta, ForceUnit* outFx, ForceUnit* outFy);
 void calcEffectCustom(
-    Effect* effect, PositionUnit x, PositionUnit y, PositionUnit dx, PositionUnit dy, TimeUnit timeDelta, ForceUnit* outFx, ForceUnit* outFy)
+    FfbEffect* effect, PositionUnit x, PositionUnit y, PositionUnit dx, PositionUnit dy, TimeUnit timeDelta, ForceUnit* outFx, ForceUnit* outFy)
     {
         // ???? TODO:
     }
@@ -190,31 +190,19 @@ void calcEffectCustom(
 // Implement the public interface
 // -----------------------------------
 
-void initEffectAbacus(void)
+void FfbAcabus_Init(void)
 {
     gEffectGain = 1.0f;
 
-    removeAllEffects();
+    FfbAcabus_RemoveAllEffects();
 }
 
-uint8_t getMaxEffects(void)
+uint8_t FfbAcabus_GetMaxEffects(void)
 {
     return MAX_EFFECTS;
 }
 
-uint8_t addEffect(void)
-{
-    uint8_t id = findFreeEffectSlot();
-    if (id != INVALID_EFFECT)
-        {
-            Effect* effect = &gEffects[id];
-            memset(effect, 0, sizeof(Effect));
-            effect->duration = DURATION_INFINITE;
-        }
-    return id;
-}
-
-const EffectFunc UsbEffectTypeCalculatorFunc[] = {
+const FfbEffectFunc UsbEffectTypeCalculatorFunc[] = {
     0, // Invalid
     calcEffectConstant,	// Constant, 
     calcEffectRamp, 	// Ramp
@@ -230,34 +218,38 @@ const EffectFunc UsbEffectTypeCalculatorFunc[] = {
     calcEffectCustom 	// Custom ?
 };
 
-uint8_t addEffectOfType(uint8_t effectType)
+uint8_t FfbAcabus_AddEffect(uint8_t effectType)
 {
     if (effectType > 12)
         return INVALID_EFFECT;
 
-    uint8_t id = addEffect();
+    uint8_t id = findFreeEffectSlot();
     if (id != INVALID_EFFECT)
         {
-            gEffects[id].func = UsbEffectTypeCalculatorFunc[effectType];
+            FfbEffect* effect = &gEffects[id];
+            memset(effect, 0, sizeof(FfbEffect));
+            effect->duration = DURATION_INFINITE;
+            if (effectType > 0)
+                gEffects[id].func = UsbEffectTypeCalculatorFunc[effectType];
         }
     return id;
 }
 
-void removeEffect(uint8_t handle)
+void FfbAcabus_RemoveEffect(uint8_t handle)
 {
     if (handle < MAX_EFFECTS)
         gEffects[handle].func = 0;
 }
 
-void removeAllEffects(void)
+void FfbAcabus_RemoveAllEffects(void)
 {
     for (int i = 0; i < MAX_EFFECTS; i++)
     {
-        memset(&gEffects[i], 0, sizeof(Effect));
+        memset(&gEffects[i], 0, sizeof(FfbEffect));
     }
 }
 
-void startEffect(uint8_t handle)
+void FfbAcabus_StartEffect(uint8_t handle)
 {
     if (handle < MAX_EFFECTS)
     {
@@ -266,13 +258,13 @@ void startEffect(uint8_t handle)
     }
 }
 
-void stopEffect(uint8_t handle)
+void FfbAcabus_StopEffect(uint8_t handle)
 {
     if (handle < MAX_EFFECTS)
         gEffects[handle].enabled = 0;
 }
 
-void stopAllEffects(void)
+void FfbAcabus_StopAllEffects(void)
 {
     for (int i = 0; i < MAX_EFFECTS; i++)
     {
@@ -280,13 +272,13 @@ void stopAllEffects(void)
     }
 }
 
-Effect* getEffect(uint8_t handle)
+FfbEffect* FfbAcabus_GetEffect(uint8_t handle)
 {
     return &gEffects[handle];
 }
 
 
-void setEffect(Effect *effect, USB_FFBReport_SetEffect_Output_Data_t *data)
+void FfbAcabus_SetEffect(FfbEffect *effect, USB_FFBReport_SetEffect_Output_Data_t *data)
 {
     /*
 	uint8_t	effectType;	// 1..12 (effect usages: 26,27,30,31,32,33,34,40,41,42,43,28)
@@ -321,12 +313,12 @@ void setEffect(Effect *effect, USB_FFBReport_SetEffect_Output_Data_t *data)
 	}
 }
 
-void setEffectEnvelope(Effect *effect, USB_FFBReport_SetEnvelope_Output_Data_t *data)
+void FfbAcabus_SetEffectEnvelope(FfbEffect *effect, USB_FFBReport_SetEnvelope_Output_Data_t *data)
 {
     // ????? TODO:
 }
 
-void setEffectCondition(Effect *effect, USB_FFBReport_SetCondition_Output_Data_t *data)
+void FfbAcabus_SetEffectCondition(FfbEffect *effect, USB_FFBReport_SetCondition_Output_Data_t *data)
 {
     if (data->parameterBlockOffset == 0)
     {
@@ -344,51 +336,51 @@ void setEffectCondition(Effect *effect, USB_FFBReport_SetCondition_Output_Data_t
     // ???? TODO: If only one condition report is given, the Direction must be applied instead of axes
 }
 
-void setEffectPeriodic(Effect *effect, USB_FFBReport_SetPeriodic_Output_Data_t *data)
+void FfbAcabus_SetEffectPeriodic(FfbEffect *effect, USB_FFBReport_SetPeriodic_Output_Data_t *data)
 {
     // ???? TODO:
 }
 
-void setEffectConstantForce(Effect *effect, ForceUnit magnitude)
+void FfbAcabus_SetEffectConstantForce(FfbEffect *effect, ForceUnit magnitude)
 {
     effect->magnitude = magnitude;
 }
 
-void setEffectRampForce(Effect *effect, USB_FFBReport_SetRampForce_Output_Data_t *data)
+void FfbAcabus_SetEffectRampForce(FfbEffect *effect, USB_FFBReport_SetRampForce_Output_Data_t *data)
 {
     // ???? TODO:
 }
 
-void setEffectCustomForce(Effect *effect, USB_FFBReport_SetCustomForce_Output_Data_t *data)
+void FfbAcabus_SetEffectCustomForce(FfbEffect *effect, USB_FFBReport_SetCustomForce_Output_Data_t *data)
 {
     // ????? TODO:
 }
 
-void setEffectCustomForceData(Effect *effect, USB_FFBReport_SetCustomForceData_Output_Data_t *data)
+void FfbAcabus_SetEffectCustomForceData(FfbEffect *effect, USB_FFBReport_SetCustomForceData_Output_Data_t *data)
 {
     // ????? TODO: Interleaved samples for axis
     // E.g. 6 samples:
     // 1,2,3,4,5,6 => sample 1: x=1,y=2, sample 2: x=3,y=4...    
 }
 
-void setEffectDownloadForceSample(Effect *effect, USB_FFBReport_SetDownloadForceSample_Output_Data_t *data)
+void FfbAcabus_SetEffectDownloadForceSample(FfbEffect *effect, USB_FFBReport_SetDownloadForceSample_Output_Data_t *data)
 {
     // Never actually downloaded - The report definition just describes the format of the sample data
 }
 
 
-void setEffectsGain(float gain)
+void FfbAcabus_SetEffectsGain(float gain)
 {
     gEffectGain = gain;
 }
 
 
 // Calculate the output forces based on all effects in the effect stack
-void calculateForces(PositionUnit x, PositionUnit y, PositionUnit dx, PositionUnit dy, TimeUnit dt, ForceUnit* outFx, ForceUnit* outFy)
+void FfbAcabus_CalculateForces(PositionUnit x, PositionUnit y, PositionUnit dx, PositionUnit dy, TimeUnit dt, ForceUnit* outFx, ForceUnit* outFy)
 {
     for (uint8_t i = 0; i < MAX_EFFECTS; i++)
     {
-        Effect *e = &gEffects[i];
+        FfbEffect *e = &gEffects[i];
         if (e->func && e->enabled)
         {
 			if (e->localTime >= e->delay)

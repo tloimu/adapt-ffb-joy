@@ -7,7 +7,7 @@ void testSuiteConstantForce();
 
 int main(void)
 {
-	initEffectAbacus();
+	FfbAcabus_Init();
 	testSuiteConstantForce();
 
 	runAllTests();

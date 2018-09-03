@@ -13,18 +13,18 @@ extern const ForceUnit MAX_FORCE;
 extern const uint8_t INVALID_EFFECT;
 extern const TimeUnit DURATION_INFINITE;
 
-struct Effect_t;
+struct FfbEffect_t;
 
-typedef void (*EffectFunc)(
-    struct Effect_t*,
+typedef void (*FfbEffectFunc)(
+    struct FfbEffect_t*,
     PositionUnit, PositionUnit,
     PositionUnit, PositionUnit,
     TimeUnit,
     ForceUnit*, ForceUnit*);
 
-struct Effect_t
+struct FfbEffect_t
 {
-    EffectFunc func;
+    FfbEffectFunc func;
 
     // Force vector
     float directionX; // -1..1 force coefficient
@@ -58,14 +58,15 @@ struct Effect_t
     void* customDriverData;
 };
 
-typedef struct Effect_t Effect;
+typedef struct FfbEffect_t FfbEffect;
 
 // Call this once in the app
-void initEffectAbacus(void);
-uint8_t getMaxEffects(void);
+void FfbAcabus_Init(void);
+uint8_t FfbAcabus_GetMaxEffects(void);
 
 // Each return the handle to the effect or INVALID_EFFECT if no free slots are available.
 /* Effect Type:
+    null=0, // Not known (yet)
     calcEffectConstant=1,	// Constant, 
     calcEffectRamp, 	// Ramp
     calcEffectSquare, 	// Square
@@ -80,31 +81,33 @@ uint8_t getMaxEffects(void);
     CalcEffectCustom 	// Custom ?
 */
 
-uint8_t addEffect(void);
-uint8_t addEffectOfType(uint8_t effectType);
+uint8_t FfbAcabus_AddEffect(uint8_t effectType);
 
-void removeEffect(uint8_t handle);
-void startEffect(uint8_t handle);
-void stopEffect(uint8_t handle);
-void stopAllEffects(void);
-void removeAllEffects(void);
-Effect* getEffect(uint8_t handle);
+void FfbAcabus_RemoveEffect(uint8_t handle);
+void FfbAcabus_StartEffect(uint8_t handle);
+void FfbAcabus_StopEffect(uint8_t handle);
+void FfbAcabus_StopAllEffects(void);
+void FfbAcabus_RemoveAllEffects(void);
+FfbEffect* FfbAcabus_GetEffect(uint8_t handle);
+
+// Enables (1) or disables (0) the auto center effect
+void FfbDirect_SetAutoCenter(uint8_t enable);
 
 // Methods for setting given effect parameters in the effect stack.
-void setEffect(Effect *effect, USB_FFBReport_SetEffect_Output_Data_t *data);
-void setEffectEnvelope(Effect *effect, USB_FFBReport_SetEnvelope_Output_Data_t *data);
-void setEffectCondition(Effect *effect, USB_FFBReport_SetCondition_Output_Data_t *data);
-void setEffectPeriodic(Effect *effect, USB_FFBReport_SetPeriodic_Output_Data_t *data);
-void setEffectConstantForce(Effect *effect, ForceUnit magnitude);
-void setEffectRampForce(Effect *effect, USB_FFBReport_SetRampForce_Output_Data_t *data);
-void setEffectCustomForce(Effect *effect, USB_FFBReport_SetCustomForce_Output_Data_t *data);
-void setEffectCustomForceData(Effect *effect, USB_FFBReport_SetCustomForceData_Output_Data_t *data);
-void setEffectDownloadForceSample(Effect *effect, USB_FFBReport_SetDownloadForceSample_Output_Data_t *data);
+void FfbAcabus_SetEffect(FfbEffect *effect, USB_FFBReport_SetEffect_Output_Data_t *data);
+void FfbAcabus_SetEffectEnvelope(FfbEffect *effect, USB_FFBReport_SetEnvelope_Output_Data_t *data);
+void FfbAcabus_SetEffectCondition(FfbEffect *effect, USB_FFBReport_SetCondition_Output_Data_t *data);
+void FfbAcabus_SetEffectPeriodic(FfbEffect *effect, USB_FFBReport_SetPeriodic_Output_Data_t *data);
+void FfbAcabus_SetEffectConstantForce(FfbEffect *effect, ForceUnit magnitude);
+void FfbAcabus_SetEffectRampForce(FfbEffect *effect, USB_FFBReport_SetRampForce_Output_Data_t *data);
+void FfbAcabus_SetEffectCustomForce(FfbEffect *effect, USB_FFBReport_SetCustomForce_Output_Data_t *data);
+void FfbAcabus_SetEffectCustomForceData(FfbEffect *effect, USB_FFBReport_SetCustomForceData_Output_Data_t *data);
+void FfbAcabus_SetEffectDownloadForceSample(FfbEffect *effect, USB_FFBReport_SetDownloadForceSample_Output_Data_t *data);
 
-// Set global effects gain
-void setEffectsGain(float gain);
+// Set global effects gain for the entire device
+void FfbAcabus_SetDeviceGain(float gain);
 
 // Calculate the output forces based on all effects in the effect stack
-void calculateForces(PositionUnit x, PositionUnit y, PositionUnit dx, PositionUnit dy, TimeUnit dt, ForceUnit* outFx, ForceUnit* outFy);
+void FfbAcabus_CalculateForces(PositionUnit x, PositionUnit y, PositionUnit dx, PositionUnit dy, TimeUnit dt, ForceUnit* outFx, ForceUnit* outFy);
 
 #endif // _FFB_ABACUS_

@@ -13,91 +13,91 @@ void setDirectionDegrees(USB_FFBReport_SetEffect_Output_Data_t *usbData, uint16_
 
 void testConstantForceSimple(void)
 {
-	initEffectAbacus();
+	FfbAcabus_Init();
 
-	uint8_t a = addEffectOfType(1);
+	uint8_t a = FfbAcabus_AddEffect(1);
 	expect(a, 1);
 
-	Effect *effect = getEffect(a);
+	FfbEffect *effect = FfbAcabus_GetEffect(a);
 	expectNotNull(effect);
 	
 	USB_FFBReport_SetEffect_Output_Data_t usbData;
 	setDirectionDegrees(&usbData, 0);
-	setEffect(effect, &usbData);
-	setEffectConstantForce(effect, 100);
-	startEffect(a);
+	FfbAcabus_SetEffect(effect, &usbData);
+	FfbAcabus_SetEffectConstantForce(effect, 100);
+	FfbAcabus_StartEffect(a);
 	ForceUnit fx = 0, fy = 0;
-	calculateForces(0, 0, 0, 0, 0, &fx, &fy);
+	FfbAcabus_CalculateForces(0, 0, 0, 0, 0, &fx, &fy);
 	expect(fx, 0);
 	expect(fy, 100);
 }
 
 void testConstantForceDiagonal(void)
 {
-	initEffectAbacus();
+	FfbAcabus_Init();
 
-	uint8_t a = addEffectOfType(1);
+	uint8_t a = FfbAcabus_AddEffect(1);
 	expect(a, 1);
 
-	Effect *effect = getEffect(a);
+	FfbEffect *effect = FfbAcabus_GetEffect(a);
 	expectNotNull(effect);
 	
 	USB_FFBReport_SetEffect_Output_Data_t usbData;
 	setDirectionDegrees(&usbData, 30);
-	setEffect(effect, &usbData);
-	setEffectConstantForce(effect, 50);
+	FfbAcabus_SetEffect(effect, &usbData);
+	FfbAcabus_SetEffectConstantForce(effect, 50);
 
-	startEffect(a);
+	FfbAcabus_StartEffect(a);
 	ForceUnit fx = 0, fy = 0;
-	calculateForces(0, 0, 0, 0, 0, &fx, &fy);
+	FfbAcabus_CalculateForces(0, 0, 0, 0, 0, &fx, &fy);
 	expect(fx, 24); // 25 is exact, but this is close enough
 	expect(fy, 43);
 }
 
 void testConstantForceDelayedWithDuration(void)
 {
-	initEffectAbacus();
+	FfbAcabus_Init();
 
-	uint8_t a = addEffect();
-	Effect *effect = getEffect(a);
+	uint8_t a = FfbAcabus_AddEffect(1);
+	FfbEffect *effect = FfbAcabus_GetEffect(a);
 	
 	USB_FFBReport_SetEffect_Output_Data_t usbData;
 	setDirectionDegrees(&usbData, 0);
-	setEffectConstantForce(effect, 100);
+	FfbAcabus_SetEffectConstantForce(effect, 100);
 	/*
-	setEffectTiming(a, 5, 30);
-	startEffect(a);
+	FfbAcabus_SetEffectTiming(a, 5, 30);
+	FfbAcabus_StartEffect(a);
 	{
 		ForceUnit fx = 0, fy = 0;
-		calculateForces(0, 0, 0, 0, 4, &fx, &fy);
+		FfbAcabus_CalculateForces(0, 0, 0, 0, 4, &fx, &fy);
 		expect(fx, 0);
 		expect(fy, 0);
 	}
 
 	{
 		ForceUnit fx = 0, fy = 0;
-		calculateForces(0, 0, 0, 0, 1, &fx, &fy);
+		FfbAcabus_CalculateForces(0, 0, 0, 0, 1, &fx, &fy);
 		expect(fx, 0);
 		expect(fy, 0);
 	}
 
 	{
 		ForceUnit fx = 0, fy = 0;
-		calculateForces(0, 0, 0, 0, 1, &fx, &fy);
+		FfbAcabus_CalculateForces(0, 0, 0, 0, 1, &fx, &fy);
 		expect(fx, 0);
 		expect(fy, 100);
 	}
 
 	{
 		ForceUnit fx = 0, fy = 0;
-		calculateForces(0, 0, 0, 0, 30, &fx, &fy);
+		FfbAcabus_CalculateForces(0, 0, 0, 0, 30, &fx, &fy);
 		expect(fx, 0);
 		expect(fy, 100);
 	}
 
 	{
 		ForceUnit fx = 0, fy = 0;
-		calculateForces(0, 0, 0, 0, 1, &fx, &fy);
+		FfbAcabus_CalculateForces(0, 0, 0, 0, 1, &fx, &fy);
 		expect(fx, 0);
 		expect(fy, 0);
 	}*/
@@ -105,45 +105,45 @@ void testConstantForceDelayedWithDuration(void)
 /*
 void testConstantForceEnveloped(void)
 {
-	initEffectAbacus();
+	FfbAcabus_Init();
 
-	uint8_t a = addEffect();
+	uint8_t a = FfbAcabus_AdEffect();
 	expect(a, 0);
 
-	setEffectConstant(a, 0, 100);
-	setEffectEnvelope(a, 10, 90, 20, 100);
-	startEffect(a);
+	FfbAcabus_SetEffectConstant(a, 0, 100);
+	FfbAcabus_SetEffectEnvelope(a, 10, 90, 20, 100);
+	FfbAcabus_StartEffect(a);
 	{
 		ForceUnit fx = 0, fy = 0;
-		calculateForces(0, 0, 0, 0, 4, &fx, &fy);
+		FfbAcabus_CalculateForces(0, 0, 0, 0, 4, &fx, &fy);
 		expect(fx, 0);
 		expect(fy, 100);
 	}
 
 	{
 		ForceUnit fx = 0, fy = 0;
-		calculateForces(0, 0, 0, 0, 1, &fx, &fy);
+		FfbAcabus_CalculateForces(0, 0, 0, 0, 1, &fx, &fy);
 		expect(fx, 0);
 		expect(fy, 0);
 	}
 
 	{
 		ForceUnit fx = 0, fy = 0;
-		calculateForces(0, 0, 0, 0, 1, &fx, &fy);
+		FfbAcabus_CalculateForces(0, 0, 0, 0, 1, &fx, &fy);
 		expect(fx, 0);
 		expect(fy, 100);
 	}
 
 	{
 		ForceUnit fx = 0, fy = 0;
-		calculateForces(0, 0, 0, 0, 30, &fx, &fy);
+		FfbAcabus_CalculateForces(0, 0, 0, 0, 30, &fx, &fy);
 		expect(fx, 0);
 		expect(fy, 100);
 	}
 
 	{
 		ForceUnit fx = 0, fy = 0;
-		calculateForces(0, 0, 0, 0, 1, &fx, &fy);
+		FfbAcabus_CalculateForces(0, 0, 0, 0, 1, &fx, &fy);
 		expect(fx, 0);
 		expect(fy, 0);
 	}

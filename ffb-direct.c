@@ -124,7 +124,7 @@ PositionUnit gLastPosY;
 
 void FfbDirect_InitializeDriver(void)
 {
-    initEffectAbacus();
+    FfbAcabus_Init();
     L298N_Init();
     gAbacusEnabled = 1;
     gAutoCenterEnabled = 1;
@@ -139,93 +139,93 @@ void FfbDirect_SetAutoCenter(uint8_t enable)
 
 void FfbDirect_StartEffect(uint8_t id)
 {
-    startEffect(id);
+    FfbAcabus_StartEffect(id);
 }
 
 void FfbDirect_StopEffect(uint8_t id)
 {
-    stopEffect(id);
+    FfbAcabus_StopEffect(id);
 }
 
 void FfbDirect_StopAllEffects(void)
 {
-    stopAllEffects();
+    FfbAcabus_StopAllEffects();
 }
 
 void FfbDirect_FreeEffect(uint8_t id)
 {
-    removeEffect(id);
+    FfbAcabus_RemoveEffect(id);
 }
 
 void FfbDirect_FreeAllEffects(void)
 {
-    removeAllEffects();
+    FfbAcabus_RemoveAllEffects();
 }
 
 void FfbDirect_SetEnvelope(USB_FFBReport_SetEnvelope_Output_Data_t *data)
 {
     uint8_t id = data->effectBlockIndex;
-    Effect *effect = getEffect(id);
+    FfbEffect *effect = FfbAcabus_GetEffect(id);
     if (effect)
-        setEffectEnvelope(effect, data);
+        FfbAcabus_SetEffectEnvelope(effect, data);
 }
 
 void FfbDirect_SetCondition(USB_FFBReport_SetCondition_Output_Data_t *data)
 {
     uint8_t id = data->effectBlockIndex;
-    Effect *effect = getEffect(id);
+    FfbEffect *effect = FfbAcabus_GetEffect(id);
     if (effect)
-        setEffectCondition(effect, data);
+        FfbAcabus_SetEffectCondition(effect, data);
 }
 
 void FfbDirect_SetPeriodic(USB_FFBReport_SetPeriodic_Output_Data_t *data)
 {
     uint8_t id = data->effectBlockIndex;
-    Effect *effect = getEffect(id);
+    FfbEffect *effect = FfbAcabus_GetEffect(id);
     if (effect)
-        setEffectPeriodic(effect, data);
+        FfbAcabus_SetEffectPeriodic(effect, data);
 }
 
 void FfbDirect_SetConstantForce(USB_FFBReport_SetConstantForce_Output_Data_t *data)
 {
     uint8_t id = data->effectBlockIndex;
-    Effect *effect = getEffect(id);
+    FfbEffect *effect = FfbAcabus_GetEffect(id);
     if (effect)
-        setEffectConstantForce(effect, data->magnitude);
+        FfbAcabus_SetEffectConstantForce(effect, data->magnitude);
 }
 
 void FfbDirect_SetRampForce(USB_FFBReport_SetRampForce_Output_Data_t *data)
 {
     uint8_t id = data->effectBlockIndex;
-    Effect *effect = getEffect(id);
+    FfbEffect *effect = FfbAcabus_GetEffect(id);
     if (effect)
-        setEffectRampForce(effect, data);
+        FfbAcabus_SetEffectRampForce(effect, data);
 }
 
 int FfbDirect_SetEffect(USB_FFBReport_SetEffect_Output_Data_t *data)
 {
     uint8_t id = data->effectBlockIndex;
-    Effect *effect = getEffect(id);
+    FfbEffect *effect = FfbAcabus_GetEffect(id);
     if (effect)
-        setEffect(effect, data);
+        FfbAcabus_SetEffect(effect, data);
 
     return 0; // ????
 }
 
 uint8_t FfbDirect_CreateNewEffect(uint8_t effectType, uint16_t byteCount)
 {
-    uint8_t id = addEffectOfType(effectType);
-    Effect *effect = getEffect(id);
+    uint8_t id = FfbAcabus_AddEffect(effectType);
+    FfbEffect *effect = FfbAcabus_GetEffect(id);
     effect->directionX = 1.0f;
     effect->directionY = 1.0f;
     effect->magnitude = 170;
-    startEffect(id);
+    FfbAcabus_StartEffect(id);
     return id;
 }
 
 uint8_t FfbDirect_GetMaxSimultaneousEffects(void)
 {
-    return getMaxEffects();
+    return FfbAcabus_GetMaxEffects();
 }
 
 
@@ -237,7 +237,7 @@ void FfbDirect_MaintainEffects(int16_t x, int16_t y, uint16_t dt)
         ForceUnit fx = 0;
         ForceUnit fy = 0;
         // ???? TODO: Determine the time passed in between the calls - also, don't call all the time but maybe once per 1ms or so
-        calculateForces(x, y, x - gLastPosX, y - gLastPosY, 1, &fx, &fy);
+        FfbAcabus_CalculateForces(x, y, x - gLastPosX, y - gLastPosY, 1, &fx, &fy);
         gLastPosX = x;
         gLastPosY = y;
         if (gAutoCenterEnabled)
