@@ -91,7 +91,7 @@ void FfbAcabus_RemoveAllEffects(void);
 FfbEffect* FfbAcabus_GetEffect(uint8_t handle);
 
 // Enables (1) or disables (0) the auto center effect
-void FfbDirect_SetAutoCenter(uint8_t enable);
+void FfbAcabus_SetAutoCenter(uint8_t enable);
 
 // Methods for setting given effect parameters in the effect stack.
 void FfbAcabus_SetEffect(FfbEffect *effect, USB_FFBReport_SetEffect_Output_Data_t *data);

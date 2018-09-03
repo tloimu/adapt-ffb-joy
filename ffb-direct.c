@@ -118,7 +118,6 @@ void L298N_SetMotors(int16_t fx, int16_t fy)
 // --------------------------------------------------
 
 volatile uint8_t gAbacusEnabled;
-volatile uint8_t gAutoCenterEnabled;
 PositionUnit gLastPosX;
 PositionUnit gLastPosY;
 
@@ -127,14 +126,13 @@ void FfbDirect_InitializeDriver(void)
     FfbAcabus_Init();
     L298N_Init();
     gAbacusEnabled = 1;
-    gAutoCenterEnabled = 1;
     gLastPosX = 0;
     gLastPosY = 0;
 }
 
 void FfbDirect_SetAutoCenter(uint8_t enable)
 {
-    gAutoCenterEnabled = enable;
+    FfbAcabus_SetAutoCenter(enable);
 }
 
 void FfbDirect_StartEffect(uint8_t id)
@@ -228,31 +226,16 @@ uint8_t FfbDirect_GetMaxSimultaneousEffects(void)
     return FfbAcabus_GetMaxEffects();
 }
 
-
 void FfbDirect_MaintainEffects(int16_t x, int16_t y, uint16_t dt)
 {
-    //if (gAbacusEnabled)
+    if (gAbacusEnabled)
     {
         // Call the effect calculation and actuate motors
         ForceUnit fx = 0;
         ForceUnit fy = 0;
-        // ???? TODO: Determine the time passed in between the calls - also, don't call all the time but maybe once per 1ms or so
-        FfbAcabus_CalculateForces(x, y, x - gLastPosX, y - gLastPosY, 1, &fx, &fy);
+        FfbAcabus_CalculateForces(x, y, x - gLastPosX, y - gLastPosY, dt, &fx, &fy);
         gLastPosX = x;
         gLastPosY = y;
-        if (gAutoCenterEnabled)
-        {
-            fx = -(x/2);
-            fy = -(y/2);
-            if (fx > 255)
-                fx = 255;
-            if (fy > 255)
-                fy = 255;
-            if (fx < -255)
-                fx = -255;
-            if (fy < -255)
-                fy = -255;
-        }
         L298N_SetMotors(fx, fy);
     }
 }
