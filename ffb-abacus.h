@@ -7,11 +7,15 @@
 
 typedef int16_t ForceUnit; // -255..255
 typedef int16_t PositionUnit;
-typedef uint32_t TimeUnit;
+typedef uint16_t TimeUnit;
+typedef int16_t Coefficient; // -1.0000 .. 1.0000 (-10000..10000)
+typedef uint16_t Frequency; // 0..320 Hz (0..32000)
 
 extern const ForceUnit MAX_FORCE;
 extern const uint8_t INVALID_EFFECT;
 extern const TimeUnit DURATION_INFINITE;
+extern const int32_t COEFFICIENT_DIVIDER; // Divider ratio for converting <Coefficient> into real value
+extern const Frequency FREQUENCY_DIVIDER; // Divider ratio for converting <Frequency> into real value
 
 struct FfbEffect_t;
 
@@ -27,8 +31,8 @@ struct FfbEffect_t
     FfbEffectFunc func;
 
     // Force vector
-    float directionX; // -1..1 force coefficient
-    float directionY; // -1..1 force coefficient
+    Coefficient directionX; // -1.0 .. 1.0 force coefficient (converted)
+    Coefficient directionY; // -1.0 .. 1.0 force coefficient (converted)
     ForceUnit magnitude; // 0..MAX_FORCE
 
     // Timing
@@ -36,7 +40,7 @@ struct FfbEffect_t
     TimeUnit duration; // milliseconds
 
     // Periodic
-    float frequency; // Hz
+    Frequency frequency; // Hz (converted)
     uint16_t phase; // degrees
 
     // Envelope
@@ -48,8 +52,8 @@ struct FfbEffect_t
     // Sprint center
     PositionUnit x;
     PositionUnit y;
-    float coeffX; // spring, friction, dampening
-    float coeffY; // spring, friction, dampening
+    Coefficient coeffX; // spring, friction, dampening
+    Coefficient coeffY; // spring, friction, dampening
 
     // Runtime info
     uint8_t enabled;
@@ -78,7 +82,7 @@ uint8_t FfbAcabus_GetMaxEffects(void);
     CalcEffectDamper,	// Damper
     CalcEffectInertia,	// Inertia
     CalcEffectFriction,	// Friction
-    CalcEffectCustom 	// Custom ?
+    CalcEffectCustom 	// Custom
 */
 
 uint8_t FfbAcabus_AddEffect(uint8_t effectType);

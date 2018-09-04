@@ -11,6 +11,8 @@
 const ForceUnit MAX_FORCE = 255;
 const uint8_t INVALID_EFFECT = 0;
 const TimeUnit DURATION_INFINITE = -1;
+const int32_t COEFFICIENT_DIVIDER = 100;
+const Frequency FREQUENCY_DIVIDER = 100;
 
 // -----------------------------------
 // Internal utilities and globals
@@ -19,7 +21,7 @@ const TimeUnit DURATION_INFINITE = -1;
 #define MAX_EFFECTS 20
 
 FfbEffect gEffects[MAX_EFFECTS];
-float gDeviceEffectGain;
+Coefficient gDeviceEffectGain;
 
 volatile uint8_t gAutoCenterEnabled;
 
@@ -54,7 +56,7 @@ void calcEffectLocalTime(FfbEffect *effect, TimeUnit dt)
     // Advance the effect's local time with the given dt and stop it if duration has passed
     effect->localTime += dt;
 
-    if (effect->localTime > (effect->delay + effect->duration))
+    if (effect->duration != DURATION_INFINITE && effect->localTime > (effect->delay + effect->duration))
         effect->enabled = 0;
 }
 
@@ -70,8 +72,8 @@ void calcEffectConstant(
     force.x = 0;
     force.y = 0;
 
-    force.x = effect->magnitude * effect->directionX;
-    force.y = effect->magnitude * effect->directionY;
+    force.x = effect->magnitude * effect->directionX / COEFFICIENT_DIVIDER;
+    force.y = effect->magnitude * effect->directionY / COEFFICIENT_DIVIDER;
 
     calcEnvelope(effect, &force);
     *outFx = force.x;
@@ -106,7 +108,7 @@ void calcEffectFriction(FfbEffect *effect, PositionUnit x, PositionUnit y, Posit
 void calcEffectFriction(
     FfbEffect *effect, PositionUnit x, PositionUnit y, PositionUnit dx, PositionUnit dy, TimeUnit timeDelta, ForceUnit *outFx, ForceUnit *outFy)
 {
-    // ???? TODO: use axis accelection as metric
+    // ???? TODO: use axis acceleration as metric
 }
 
 void calcEffectInertia(FfbEffect *effect, PositionUnit x, PositionUnit y, PositionUnit dx, PositionUnit dy, TimeUnit timeDelta, ForceUnit *outFx, ForceUnit *outFy);
@@ -118,14 +120,14 @@ void calcEffectInertia(
 
 void trimForces(ForceUnit *fx, ForceUnit *fy)
 {
-    if (*fx > 255)
-        *fx = 255;
-    if (*fy > 255)
-        *fy = 255;
-    if (*fx < -255)
-        *fx = -255;
-    if (*fy < -255)
-        *fy = -255;
+    if (*fx > MAX_FORCE)
+        *fx = MAX_FORCE;
+    else if (*fx < -MAX_FORCE)
+        *fx = -MAX_FORCE;
+    if (*fy > MAX_FORCE)
+        *fy = MAX_FORCE;
+    else if (*fy < -MAX_FORCE)
+        *fy = -MAX_FORCE;
 }
 
 void calcEffectSpring(FfbEffect *effect, PositionUnit x, PositionUnit y, PositionUnit dx, PositionUnit dy, TimeUnit timeDelta, ForceUnit *outFx, ForceUnit *outFy);
@@ -144,8 +146,8 @@ void calcEffectSpring(
     // ---------------B----C----B----0----------
     // ----neg coeff--|         |--pos coeff----
 
-    force.x = -(x / 2) * (effect->coeffX / MAX_FORCE);
-    force.y = -(y / 2) * (effect->coeffY / MAX_FORCE);
+    force.x = -(x / 2) * (effect->coeffX / COEFFICIENT_DIVIDER / MAX_FORCE);
+    force.y = -(y / 2) * (effect->coeffY / COEFFICIENT_DIVIDER / MAX_FORCE);
     trimForces(&force.x, &force.y);
 
     calcEnvelope(effect, &force);
@@ -193,16 +195,9 @@ void calcEffectAutoCenter(PositionUnit x, PositionUnit y, PositionUnit dx, Posit
 {
     ForceUnit fx = -(x / 2);
     ForceUnit fy = -(y / 2);
-    if (fx > 255)
-        fx = 255;
-    if (fy > 255)
-        fy = 255;
-    if (fx < -255)
-        fx = -255;
-    if (fy < -255)
-        fy = -255;
-    (*outFx) += fx; // gDeviceEffectGain * fx;
-    (*outFy) += fy; // gDeviceEffectGain * fy;
+	trimForces(&fx, fy);
+    (*outFx) += fx;
+    (*outFy) += fy;
 }
 
 // -----------------------------------
@@ -211,7 +206,7 @@ void calcEffectAutoCenter(PositionUnit x, PositionUnit y, PositionUnit dx, Posit
 
 void FfbAcabus_Init(void)
 {
-    gDeviceEffectGain = 1.0f;
+    gDeviceEffectGain = COEFFICIENT_DIVIDER; // = 1.0
     gAutoCenterEnabled = 1;
 
     FfbAcabus_RemoveAllEffects();
@@ -235,7 +230,7 @@ const FfbEffectFunc UsbEffectTypeCalculatorFunc[] = {
     calcEffectDamper,       // Damper
     calcEffectInertia,      // Inertia
     calcEffectFriction,     // Friction
-    calcEffectCustom        // Custom ?
+    calcEffectCustom        // Custom
 };
 
 uint8_t FfbAcabus_AddEffect(uint8_t effectType)
@@ -317,23 +312,26 @@ void FfbAcabus_SetEffect(FfbEffect *effect, USB_FFBReport_SetEffect_Output_Data_
 //	uint16_t	startDelay;	// 0..32767 ms
     */
 
-    effect->duration = data->duration;
+	if (data->duration == USB_DURATION_INFINITE)
+	    effect->duration = DURATION_INFINITE;
+	else
+	    effect->duration = data->duration;
     //    effect->delay = data->startDelay;
     if (data->enableAxis == 2)
     {
         float dirRad = PI * (data->directionX / 128.0f);
-        effect->directionX = sin(dirRad);
-        effect->directionY = cos(dirRad);
+        effect->directionX = ((float) COEFFICIENT_DIVIDER * sin(dirRad));
+        effect->directionY = ((float) COEFFICIENT_DIVIDER * cos(dirRad));
     }
     else if (data->enableAxis == 1)
     {
-        effect->directionX = data->directionX / 255;
+        effect->directionX = data->directionX * COEFFICIENT_DIVIDER;
         effect->directionY = 0;
     }
     else
     {
         effect->directionX = 0;
-        effect->directionY = data->directionY / 255;
+        effect->directionY = data->directionY * COEFFICIENT_DIVIDER;
     }
 }
 
@@ -394,7 +392,7 @@ void FfbAcabus_SetEffectDownloadForceSample(FfbEffect *effect, USB_FFBReport_Set
 
 void FfbAcabus_SetEffectsGain(float gain)
 {
-    gDeviceEffectGain = gain;
+    gDeviceEffectGain = gain * COEFFICIENT_DIVIDER;
 }
 
 // Calculate the output forces based on all effects in the effect stack
@@ -416,12 +414,14 @@ void FfbAcabus_CalculateForces(PositionUnit x, PositionUnit y, PositionUnit dx, 
             {
                 if (e->localTime >= e->delay)
                 {
-                    gEffects[i].func(e, x, y, dx, dy, dt, &fx, &fy);
-                    (*outFx) += fx; // gDeviceEffectGain * fx;
-                    (*outFy) += fy; // gDeviceEffectGain * fy;
+	                gEffects[i].func(e, x, y, dx, dy, dt, &fx, &fy);
+					(*outFx) += fx;
+					(*outFy) += fy;
                 }
                 calcEffectLocalTime(e, dt);
             }
         }
     }
+	(*outFx) = (*outFx) * gDeviceEffectGain / COEFFICIENT_DIVIDER;
+	(*outFy) = (*outFy) * gDeviceEffectGain / COEFFICIENT_DIVIDER;
 }

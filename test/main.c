@@ -3,12 +3,13 @@
 #include "test.h"
 #include "testsuites.h"
 
-void testSuiteConstantForce();
-
 int main(void)
 {
 	FfbAcabus_Init();
+	testSuiteSetEffect();
 	testSuiteConstantForce();
+	testSuiteSpringForce();
+	testSuiteSineForce();
 
 	runAllTests();
 

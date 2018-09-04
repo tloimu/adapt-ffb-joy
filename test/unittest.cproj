@@ -59,15 +59,15 @@
     </com_atmel_avrdbg_tool_simulator>
     <AsfFrameworkConfig>
       <framework-data xmlns="">
-  <options />
-  <configurations />
-  <files />
-  <documentation help="" />
-  <offline-documentation help="" />
-  <dependencies>
-    <content-extension eid="atmel.asf" uuidref="Atmel.ASF" version="3.40.0" />
-  </dependencies>
-</framework-data>
+        <options />
+        <configurations />
+        <files />
+        <documentation help="" />
+        <offline-documentation help="" />
+        <dependencies>
+          <content-extension eid="atmel.asf" uuidref="Atmel.ASF" version="3.40.0" />
+        </dependencies>
+      </framework-data>
     </AsfFrameworkConfig>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
@@ -161,11 +161,22 @@
     </Compile>
     <Compile Include="../ffb-abacus.c">
       <SubType>compile</SubType>
+      <Link>ffb-abacus.c</Link>
     </Compile>
     <Compile Include="../ffb-abacus.h">
       <SubType>compile</SubType>
+      <Link>ffb-abacus.h</Link>
     </Compile>
     <Compile Include="testConstant.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="testSetEffect.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="testSine.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="testSpring.c">
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="testsuites.h">
