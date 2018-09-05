@@ -214,10 +214,6 @@ uint8_t FfbDirect_CreateNewEffect(uint8_t effectType, uint16_t byteCount)
 {
     uint8_t id = FfbAbacus_AddEffect(effectType);
     FfbEffect *effect = FfbAbacus_GetEffect(id);
-    effect->directionX = 1.0f;
-    effect->directionY = 1.0f;
-    effect->magnitude = 170;
-    FfbAbacus_StartEffect(id);
     return id;
 }
 

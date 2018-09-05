@@ -84,23 +84,31 @@ void calcEffectSquare(FfbEffect *effect, PositionUnit x, PositionUnit y, Positio
 void calcEffectSquare(
     FfbEffect *effect, PositionUnit x, PositionUnit y, PositionUnit dx, PositionUnit dy, TimeUnit timeDelta, ForceUnit *outFx, ForceUnit *outFy)
 {
-    // ???? TODO:
-    calcRemainingPhaseTime(effect, timeDelta);
+	uint16_t cycle = 1000 / effect->frequency;
+	if (effect->localTime % cycle < (cycle / 2))
+		{
+		*outFx = effect->magnitude * effect->directionX;
+		*outFy = effect->magnitude * effect->directionY;
+		}
+	else
+		{
+		*outFx = -effect->magnitude * effect->directionX;
+		*outFy = -effect->magnitude * effect->directionY;
+		}
 }
 
 void calcEffectTriangle(FfbEffect *effect, PositionUnit x, PositionUnit y, PositionUnit dx, PositionUnit dy, TimeUnit timeDelta, ForceUnit *outFx, ForceUnit *outFy);
 void calcEffectTriangle(
     FfbEffect *effect, PositionUnit x, PositionUnit y, PositionUnit dx, PositionUnit dy, TimeUnit timeDelta, ForceUnit *outFx, ForceUnit *outFy)
 {
-    // ???? TODO:
-    calcRemainingPhaseTime(effect, timeDelta);
+	// ???? TODO:
 }
 
 void calcEffectFriction(FfbEffect *effect, PositionUnit x, PositionUnit y, PositionUnit dx, PositionUnit dy, TimeUnit timeDelta, ForceUnit *outFx, ForceUnit *outFy);
 void calcEffectFriction(
     FfbEffect *effect, PositionUnit x, PositionUnit y, PositionUnit dx, PositionUnit dy, TimeUnit timeDelta, ForceUnit *outFx, ForceUnit *outFy)
 {
-    // ???? TODO: use axis accelection as metric
+    // ???? TODO: use axis acceleration as metric
 }
 
 void calcEffectInertia(FfbEffect *effect, PositionUnit x, PositionUnit y, PositionUnit dx, PositionUnit dy, TimeUnit timeDelta, ForceUnit *outFx, ForceUnit *outFy);
@@ -130,16 +138,15 @@ void calcEffectSpring(
     // force = Negative Coefficient * (x - (CP OffsetX – Dead BandX))
     // force = Positive Coefficient * (q - (CP OffsetX + Dead BandX))
     //
-    // offset is -10, dead band = 5
-    //
-    // ---------------B----C----B----0----------
-    // ----neg coeff--|         |--pos coeff----
+    // Example offset is -10, dead band = 5
+    //               -15  -10  -5    0
+    // ---------------B----C----B----+----------
+    // ----neg coeff--|   zero  |--pos coeff----
 
-    ForceUnit fx = -(x / 2) * (effect->coeffX / MAX_FORCE);
-    ForceUnit fy = -(y / 2) * (effect->coeffY / MAX_FORCE);
-    trimForces(&fx, &fy);
-    *outFx = fx;
-    *outFy = fy;
+	// ???? TODO: separate negative and positive coefficient (and dead band and saturation)
+
+    *outFx = -( (x - effect->x) * effect->coeffX );
+    *outFy = -( (y - effect->y) * effect->coeffY );
 }
 
 void calcEffectSawtoothDown(FfbEffect *effect, PositionUnit x, PositionUnit y, PositionUnit dx, PositionUnit dy, TimeUnit timeDelta, ForceUnit *outFx, ForceUnit *outFy);
@@ -180,11 +187,8 @@ void calcEffectCustom(
 void calcEffectAutoCenter(PositionUnit x, PositionUnit y, PositionUnit dx, PositionUnit dy, ForceUnit *outFx, ForceUnit *outFy);
 void calcEffectAutoCenter(PositionUnit x, PositionUnit y, PositionUnit dx, PositionUnit dy, ForceUnit *outFx, ForceUnit *outFy)
 {
-    ForceUnit fx = -(x / 2);
-    ForceUnit fy = -(y / 2);
-    trimForces(&fx, &fy);
-    (*outFx) += fx;
-    (*outFy) += fy;
+    *outFx = -(x / 2);
+    *outFy = -(y / 2);
 }
 
 // -----------------------------------
@@ -307,22 +311,9 @@ void FfbAbacus_SetEffect(FfbEffect *effect, USB_FFBReport_SetEffect_Output_Data_
         effect->duration = data->duration;
     
     //    effect->delay = data->startDelay;
-    if (data->enableAxis == 2)
-    {
-        float dirRad = PI * (((float) data->directionX) / 128.0f);
-        effect->directionX = sin(dirRad);
-        effect->directionY = cos(dirRad);
-    }
-    else if (data->enableAxis == 1)
-    {
-        effect->directionX = data->directionX / MAX_FORCE;
-        effect->directionY = 0;
-    }
-    else if (data->enableAxis == 0)
-    {
-        effect->directionX = 0;
-        effect->directionY = data->directionY / MAX_FORCE;
-    }
+	float dirRad = 2.0f * PI * (((float) data->directionX) / 196.0f); // ???? Works, but something odd about this?
+	effect->directionX = sin(dirRad);
+	effect->directionY = -cos(dirRad);
 }
 
 void FfbAbacus_SetEffectEnvelope(FfbEffect *effect, USB_FFBReport_SetEnvelope_Output_Data_t *data)
@@ -418,8 +409,6 @@ void FfbAbacus_CalculateForces(PositionUnit x, PositionUnit y, PositionUnit dx, 
     }
     else
     {
-        ForceUnit fx = 0;
-        ForceUnit fy = 0;
         for (uint8_t i = 0; i < MAX_EFFECTS; i++)
         {
             FfbEffect *effect = &gEffects[i];
@@ -427,6 +416,8 @@ void FfbAbacus_CalculateForces(PositionUnit x, PositionUnit y, PositionUnit dx, 
             {
                 if (effect->localTime >= effect->delay)
                 {
+					ForceUnit fx = 0;
+					ForceUnit fy = 0;
                     effect->func(effect, x, y, dx, dy, dt, &fx, &fy);
                     calcEnvelope(effect, &fx, &fy);
                     (*outFx) += fx;
@@ -439,4 +430,5 @@ void FfbAbacus_CalculateForces(PositionUnit x, PositionUnit y, PositionUnit dx, 
 
     (*outFx) = (*outFx) * gDeviceEffectGain;
     (*outFy) = (*outFy) * gDeviceEffectGain;
+	trimForces(outFx, outFy);
 }
