@@ -7,7 +7,7 @@ void testSuiteConstantForce();
 
 int main(void)
 {
-	FfbAcabus_Init();
+	FfbAbacus_Init();
 	testSuiteConstantForce();
 
 	runAllTests();
