@@ -14,6 +14,19 @@ void expect(long expected, long actual)
 		fail();
 }
 
+void expectF(float expected, float actual)
+{
+	if (expected != actual)
+		fail();
+}
+
+void expectFin(float expectedMin, float expectedMax, float actual)
+{
+	if (actual < expectedMin || actual > expectedMax)
+		fail();
+}
+
+
 void expectNot(long notExpected, long actual)
 {
 	if (notExpected == actual)

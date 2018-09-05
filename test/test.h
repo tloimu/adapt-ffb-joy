@@ -11,6 +11,8 @@ void runAllTests();
 
 void fail(void);
 void expect(long expected, long actual);
+void expectF(float expected, float actual);
+void expectFin(float expectedMin, float expectedMax, float actual);
 void expectNot(long notExpected, long actual);
 void expectNull(void* actual);
 void expectNotNull(void* actual);

@@ -44,7 +44,7 @@ void calcRemainingPhaseTime(FfbEffect *effect, TimeUnit timeDelta)
     // ???? TODO:
 }
 
-void calcEnvelope(FfbEffect *effect, ForceVector *ioForce)
+void calcEnvelope(FfbEffect *effect, ForceUnit *ioFx, ForceUnit *ioFy)
 {
     // ???? TODO:
 }
@@ -66,24 +66,18 @@ void calcEffectConstant(FfbEffect *effect, PositionUnit x, PositionUnit y, Posit
 void calcEffectConstant(
     FfbEffect *effect, PositionUnit x, PositionUnit y, PositionUnit dx, PositionUnit dy, TimeUnit timeDelta, ForceUnit *outFx, ForceUnit *outFy)
 {
-    ForceVector force;
-    force.x = 0;
-    force.y = 0;
-
-    force.x = effect->magnitude * effect->directionX;
-    force.y = effect->magnitude * effect->directionY;
-
-    calcEnvelope(effect, &force);
-    *outFx = force.x;
-    *outFy = force.y;
+    *outFx = effect->magnitude * effect->directionX;
+    *outFy = effect->magnitude * effect->directionY;
 }
 
 void calcEffectSine(FfbEffect *effect, PositionUnit x, PositionUnit y, PositionUnit dx, PositionUnit dy, TimeUnit timeDelta, ForceUnit *outFx, ForceUnit *outFy);
 void calcEffectSine(
     FfbEffect *effect, PositionUnit x, PositionUnit y, PositionUnit dx, PositionUnit dy, TimeUnit timeDelta, ForceUnit *outFx, ForceUnit *outFy)
 {
-    // ???? TODO:
-    calcRemainingPhaseTime(effect, timeDelta);
+	float rad = 2 * PI * (effect->frequency * effect->localTime / 1000.0f);
+	ForceUnit a = sin(rad) * effect->magnitude;
+	*outFx = a * effect->directionX;
+	*outFy = a * effect->directionY;
 }
 
 void calcEffectSquare(FfbEffect *effect, PositionUnit x, PositionUnit y, PositionUnit dx, PositionUnit dy, TimeUnit timeDelta, ForceUnit *outFx, ForceUnit *outFy);
@@ -118,24 +112,21 @@ void calcEffectInertia(
 
 void trimForces(ForceUnit *fx, ForceUnit *fy)
 {
-    if (*fx > 255)
-        *fx = 255;
-    if (*fy > 255)
-        *fy = 255;
-    if (*fx < -255)
-        *fx = -255;
-    if (*fy < -255)
-        *fy = -255;
+    if (*fx > MAX_FORCE)
+        *fx = MAX_FORCE;
+    else if (*fx < -MAX_FORCE)
+        *fx = -MAX_FORCE;
+
+    if (*fy > MAX_FORCE)
+        *fy = MAX_FORCE;
+    else if (*fy < -MAX_FORCE)
+        *fy = -MAX_FORCE;
 }
 
 void calcEffectSpring(FfbEffect *effect, PositionUnit x, PositionUnit y, PositionUnit dx, PositionUnit dy, TimeUnit timeDelta, ForceUnit *outFx, ForceUnit *outFy);
 void calcEffectSpring(
     FfbEffect *effect, PositionUnit x, PositionUnit y, PositionUnit dx, PositionUnit dy, TimeUnit timeDelta, ForceUnit *outFx, ForceUnit *outFy)
 {
-    ForceVector force;
-    force.x = 0;
-    force.y = 0;
-
     // force = Negative Coefficient * (x - (CP OffsetX – Dead BandX))
     // force = Positive Coefficient * (q - (CP OffsetX + Dead BandX))
     //
@@ -144,13 +135,11 @@ void calcEffectSpring(
     // ---------------B----C----B----0----------
     // ----neg coeff--|         |--pos coeff----
 
-    force.x = -(x / 2) * (effect->coeffX / MAX_FORCE);
-    force.y = -(y / 2) * (effect->coeffY / MAX_FORCE);
-    trimForces(&force.x, &force.y);
-
-    calcEnvelope(effect, &force);
-    *outFx = force.x;
-    *outFy = force.y;
+    ForceUnit fx = -(x / 2) * (effect->coeffX / MAX_FORCE);
+    ForceUnit fy = -(y / 2) * (effect->coeffY / MAX_FORCE);
+    trimForces(&fx, &fy);
+    *outFx = fx;
+    *outFy = fy;
 }
 
 void calcEffectSawtoothDown(FfbEffect *effect, PositionUnit x, PositionUnit y, PositionUnit dx, PositionUnit dy, TimeUnit timeDelta, ForceUnit *outFx, ForceUnit *outFy);
@@ -193,31 +182,24 @@ void calcEffectAutoCenter(PositionUnit x, PositionUnit y, PositionUnit dx, Posit
 {
     ForceUnit fx = -(x / 2);
     ForceUnit fy = -(y / 2);
-    if (fx > 255)
-        fx = 255;
-    if (fy > 255)
-        fy = 255;
-    if (fx < -255)
-        fx = -255;
-    if (fy < -255)
-        fy = -255;
-    (*outFx) += fx; // gDeviceEffectGain * fx;
-    (*outFy) += fy; // gDeviceEffectGain * fy;
+    trimForces(&fx, &fy);
+    (*outFx) += fx;
+    (*outFy) += fy;
 }
 
 // -----------------------------------
 // Implement the public interface
 // -----------------------------------
 
-void FfbAcabus_Init(void)
+void FfbAbacus_Init(void)
 {
     gDeviceEffectGain = 1.0f;
     gAutoCenterEnabled = 1;
 
-    FfbAcabus_RemoveAllEffects();
+    FfbAbacus_RemoveAllEffects();
 }
 
-uint8_t FfbAcabus_GetMaxEffects(void)
+uint8_t FfbAbacus_GetMaxEffects(void)
 {
     return MAX_EFFECTS;
 }
@@ -238,7 +220,7 @@ const FfbEffectFunc UsbEffectTypeCalculatorFunc[] = {
     calcEffectCustom        // Custom ?
 };
 
-uint8_t FfbAcabus_AddEffect(uint8_t effectType)
+uint8_t FfbAbacus_AddEffect(uint8_t effectType)
 {
     if (effectType > 12)
         return INVALID_EFFECT;
@@ -255,13 +237,13 @@ uint8_t FfbAcabus_AddEffect(uint8_t effectType)
     return id;
 }
 
-void FfbAcabus_RemoveEffect(uint8_t handle)
+void FfbAbacus_RemoveEffect(uint8_t handle)
 {
     if (handle < MAX_EFFECTS)
         gEffects[handle].func = 0;
 }
 
-void FfbAcabus_RemoveAllEffects(void)
+void FfbAbacus_RemoveAllEffects(void)
 {
     for (int i = 0; i < MAX_EFFECTS; i++)
     {
@@ -269,7 +251,7 @@ void FfbAcabus_RemoveAllEffects(void)
     }
 }
 
-void FfbAcabus_StartEffect(uint8_t handle)
+void FfbAbacus_StartEffect(uint8_t handle)
 {
     if (handle < MAX_EFFECTS)
     {
@@ -278,13 +260,13 @@ void FfbAcabus_StartEffect(uint8_t handle)
     }
 }
 
-void FfbAcabus_StopEffect(uint8_t handle)
+void FfbAbacus_StopEffect(uint8_t handle)
 {
     if (handle < MAX_EFFECTS)
         gEffects[handle].enabled = 0;
 }
 
-void FfbAcabus_StopAllEffects(void)
+void FfbAbacus_StopAllEffects(void)
 {
     for (int i = 0; i < MAX_EFFECTS; i++)
     {
@@ -292,17 +274,17 @@ void FfbAcabus_StopAllEffects(void)
     }
 }
 
-FfbEffect *FfbAcabus_GetEffect(uint8_t handle)
+FfbEffect *FfbAbacus_GetEffect(uint8_t handle)
 {
     return &gEffects[handle];
 }
 
-void FfbAcabus_SetAutoCenter(uint8_t enable)
+void FfbAbacus_SetAutoCenter(uint8_t enable)
 {
     gAutoCenterEnabled = enable;
 }
 
-void FfbAcabus_SetEffect(FfbEffect *effect, USB_FFBReport_SetEffect_Output_Data_t *data)
+void FfbAbacus_SetEffect(FfbEffect *effect, USB_FFBReport_SetEffect_Output_Data_t *data)
 {
     /*
 	uint8_t	effectType;	// 1..12 (effect usages: 26,27,30,31,32,33,34,40,41,42,43,28)
@@ -317,32 +299,47 @@ void FfbAcabus_SetEffect(FfbEffect *effect, USB_FFBReport_SetEffect_Output_Data_
 //	uint16_t	startDelay;	// 0..32767 ms
     */
 
-    effect->duration = data->duration;
+	effect->func = UsbEffectTypeCalculatorFunc[data->effectType];
+
+    if (data->duration == USB_DURATION_INFINITE)
+        effect->duration = DURATION_INFINITE;
+    else
+        effect->duration = data->duration;
+    
     //    effect->delay = data->startDelay;
     if (data->enableAxis == 2)
     {
-        float dirRad = PI * (data->directionX / 128.0f);
+        float dirRad = PI * (((float) data->directionX) / 128.0f);
         effect->directionX = sin(dirRad);
         effect->directionY = cos(dirRad);
     }
     else if (data->enableAxis == 1)
     {
-        effect->directionX = data->directionX / 255;
+        effect->directionX = data->directionX / MAX_FORCE;
         effect->directionY = 0;
     }
-    else
+    else if (data->enableAxis == 0)
     {
         effect->directionX = 0;
-        effect->directionY = data->directionY / 255;
+        effect->directionY = data->directionY / MAX_FORCE;
     }
 }
 
-void FfbAcabus_SetEffectEnvelope(FfbEffect *effect, USB_FFBReport_SetEnvelope_Output_Data_t *data)
+void FfbAbacus_SetEffectEnvelope(FfbEffect *effect, USB_FFBReport_SetEnvelope_Output_Data_t *data)
 {
-    // ????? TODO:
+/*
+	uint8_t attackLevel;
+	uint8_t	fadeLevel;
+	uint16_t	attackTime;	// ms
+	uint16_t	fadeTime;	// ms
+*/
+	effect->attackFromForce = data->attackLevel;
+	effect->decayToForce = data->fadeLevel;
+	effect->attackTime = data->attackTime;
+	effect->decayTime = data->fadeTime;
 }
 
-void FfbAcabus_SetEffectCondition(FfbEffect *effect, USB_FFBReport_SetCondition_Output_Data_t *data)
+void FfbAbacus_SetEffectCondition(FfbEffect *effect, USB_FFBReport_SetCondition_Output_Data_t *data)
 {
     if (data->parameterBlockOffset == 0)
     {
@@ -360,68 +357,86 @@ void FfbAcabus_SetEffectCondition(FfbEffect *effect, USB_FFBReport_SetCondition_
     // ???? TODO: If only one condition report is given, the Direction must be applied instead of axes
 }
 
-void FfbAcabus_SetEffectPeriodic(FfbEffect *effect, USB_FFBReport_SetPeriodic_Output_Data_t *data)
+void FfbAbacus_SetEffectPeriodic(FfbEffect *effect, USB_FFBReport_SetPeriodic_Output_Data_t *data)
 {
+/*
+	uint8_t magnitude;
+	int8_t	offset;
+	uint8_t	phase;	// 0..255 (=0..359, exp-2)
+	uint16_t	period;	// 0..32767 ms
+*/
     // ???? TODO:
+	effect->magnitude = data->magnitude;
+	effect->phase = ( data->phase * 32 ) / 45; // 0..255 => 0..360
+	effect->frequency = 1000.0f / data->period;
+	// ... data->offset
 }
 
-void FfbAcabus_SetEffectConstantForce(FfbEffect *effect, ForceUnit magnitude)
+void FfbAbacus_SetEffectConstantForce(FfbEffect *effect, ForceUnit magnitude)
 {
     effect->magnitude = magnitude;
 }
 
-void FfbAcabus_SetEffectRampForce(FfbEffect *effect, USB_FFBReport_SetRampForce_Output_Data_t *data)
+void FfbAbacus_SetEffectRampForce(FfbEffect *effect, USB_FFBReport_SetRampForce_Output_Data_t *data)
 {
     // ???? TODO:
 }
 
-void FfbAcabus_SetEffectCustomForce(FfbEffect *effect, USB_FFBReport_SetCustomForce_Output_Data_t *data)
+void FfbAbacus_SetEffectCustomForce(FfbEffect *effect, USB_FFBReport_SetCustomForce_Output_Data_t *data)
 {
     // ????? TODO:
 }
 
-void FfbAcabus_SetEffectCustomForceData(FfbEffect *effect, USB_FFBReport_SetCustomForceData_Output_Data_t *data)
+void FfbAbacus_SetEffectCustomForceData(FfbEffect *effect, USB_FFBReport_SetCustomForceData_Output_Data_t *data)
 {
     // ????? TODO: Interleaved samples for axis
     // E.g. 6 samples:
     // 1,2,3,4,5,6 => sample 1: x=1,y=2, sample 2: x=3,y=4...
 }
 
-void FfbAcabus_SetEffectDownloadForceSample(FfbEffect *effect, USB_FFBReport_SetDownloadForceSample_Output_Data_t *data)
+void FfbAbacus_SetEffectDownloadForceSample(FfbEffect *effect, USB_FFBReport_SetDownloadForceSample_Output_Data_t *data)
 {
     // Never actually downloaded - The report definition just describes the format of the sample data
 }
 
-void FfbAcabus_SetEffectsGain(float gain)
+void FfbAbacus_SetEffectsGain(float gain)
 {
-    gDeviceEffectGain = gain;
+	if (gain > 1.0f)
+		gDeviceEffectGain = 1.0f;
+	else if (gain < 0.0f)
+		gDeviceEffectGain = 0.0f;
+	else
+	    gDeviceEffectGain = gain;
 }
 
 // Calculate the output forces based on all effects in the effect stack
-void FfbAcabus_CalculateForces(PositionUnit x, PositionUnit y, PositionUnit dx, PositionUnit dy, TimeUnit dt, ForceUnit *outFx, ForceUnit *outFy)
+void FfbAbacus_CalculateForces(PositionUnit x, PositionUnit y, PositionUnit dx, PositionUnit dy, TimeUnit dt, ForceUnit *outFx, ForceUnit *outFy)
 {
-    ForceUnit fx = 0;
-    ForceUnit fy = 0;
-
     if (gAutoCenterEnabled)
     {
         calcEffectAutoCenter(x, y, dx, dy, outFx, outFy);
     }
     else
     {
+        ForceUnit fx = 0;
+        ForceUnit fy = 0;
         for (uint8_t i = 0; i < MAX_EFFECTS; i++)
         {
-            FfbEffect *e = &gEffects[i];
-            if (e->func && e->enabled)
+            FfbEffect *effect = &gEffects[i];
+            if (effect->func && effect->enabled)
             {
-                if (e->localTime >= e->delay)
+                if (effect->localTime >= effect->delay)
                 {
-                    gEffects[i].func(e, x, y, dx, dy, dt, &fx, &fy);
-                    (*outFx) += fx; // gDeviceEffectGain * fx;
-                    (*outFy) += fy; // gDeviceEffectGain * fy;
+                    effect->func(effect, x, y, dx, dy, dt, &fx, &fy);
+                    calcEnvelope(effect, &fx, &fy);
+                    (*outFx) += fx;
+                    (*outFy) += fy;
                 }
-                calcEffectLocalTime(e, dt);
+                calcEffectLocalTime(effect, dt);
             }
         }
     }
+
+    (*outFx) = (*outFx) * gDeviceEffectGain;
+    (*outFy) = (*outFy) * gDeviceEffectGain;
 }

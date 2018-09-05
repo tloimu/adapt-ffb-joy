@@ -123,7 +123,7 @@ PositionUnit gLastPosY;
 
 void FfbDirect_InitializeDriver(void)
 {
-    FfbAcabus_Init();
+    FfbAbacus_Init();
     L298N_Init();
     gAbacusEnabled = 1;
     gLastPosX = 0;
@@ -132,98 +132,98 @@ void FfbDirect_InitializeDriver(void)
 
 void FfbDirect_SetAutoCenter(uint8_t enable)
 {
-    FfbAcabus_SetAutoCenter(enable);
+    FfbAbacus_SetAutoCenter(enable);
 }
 
 void FfbDirect_StartEffect(uint8_t id)
 {
-    FfbAcabus_StartEffect(id);
+    FfbAbacus_StartEffect(id);
 }
 
 void FfbDirect_StopEffect(uint8_t id)
 {
-    FfbAcabus_StopEffect(id);
+    FfbAbacus_StopEffect(id);
 }
 
 void FfbDirect_StopAllEffects(void)
 {
-    FfbAcabus_StopAllEffects();
+    FfbAbacus_StopAllEffects();
 }
 
 void FfbDirect_FreeEffect(uint8_t id)
 {
-    FfbAcabus_RemoveEffect(id);
+    FfbAbacus_RemoveEffect(id);
 }
 
 void FfbDirect_FreeAllEffects(void)
 {
-    FfbAcabus_RemoveAllEffects();
+    FfbAbacus_RemoveAllEffects();
 }
 
 void FfbDirect_SetEnvelope(USB_FFBReport_SetEnvelope_Output_Data_t *data)
 {
     uint8_t id = data->effectBlockIndex;
-    FfbEffect *effect = FfbAcabus_GetEffect(id);
+    FfbEffect *effect = FfbAbacus_GetEffect(id);
     if (effect)
-        FfbAcabus_SetEffectEnvelope(effect, data);
+        FfbAbacus_SetEffectEnvelope(effect, data);
 }
 
 void FfbDirect_SetCondition(USB_FFBReport_SetCondition_Output_Data_t *data)
 {
     uint8_t id = data->effectBlockIndex;
-    FfbEffect *effect = FfbAcabus_GetEffect(id);
+    FfbEffect *effect = FfbAbacus_GetEffect(id);
     if (effect)
-        FfbAcabus_SetEffectCondition(effect, data);
+        FfbAbacus_SetEffectCondition(effect, data);
 }
 
 void FfbDirect_SetPeriodic(USB_FFBReport_SetPeriodic_Output_Data_t *data)
 {
     uint8_t id = data->effectBlockIndex;
-    FfbEffect *effect = FfbAcabus_GetEffect(id);
+    FfbEffect *effect = FfbAbacus_GetEffect(id);
     if (effect)
-        FfbAcabus_SetEffectPeriodic(effect, data);
+        FfbAbacus_SetEffectPeriodic(effect, data);
 }
 
 void FfbDirect_SetConstantForce(USB_FFBReport_SetConstantForce_Output_Data_t *data)
 {
     uint8_t id = data->effectBlockIndex;
-    FfbEffect *effect = FfbAcabus_GetEffect(id);
+    FfbEffect *effect = FfbAbacus_GetEffect(id);
     if (effect)
-        FfbAcabus_SetEffectConstantForce(effect, data->magnitude);
+        FfbAbacus_SetEffectConstantForce(effect, data->magnitude);
 }
 
 void FfbDirect_SetRampForce(USB_FFBReport_SetRampForce_Output_Data_t *data)
 {
     uint8_t id = data->effectBlockIndex;
-    FfbEffect *effect = FfbAcabus_GetEffect(id);
+    FfbEffect *effect = FfbAbacus_GetEffect(id);
     if (effect)
-        FfbAcabus_SetEffectRampForce(effect, data);
+        FfbAbacus_SetEffectRampForce(effect, data);
 }
 
 int FfbDirect_SetEffect(USB_FFBReport_SetEffect_Output_Data_t *data)
 {
     uint8_t id = data->effectBlockIndex;
-    FfbEffect *effect = FfbAcabus_GetEffect(id);
+    FfbEffect *effect = FfbAbacus_GetEffect(id);
     if (effect)
-        FfbAcabus_SetEffect(effect, data);
+        FfbAbacus_SetEffect(effect, data);
 
     return 0; // ????
 }
 
 uint8_t FfbDirect_CreateNewEffect(uint8_t effectType, uint16_t byteCount)
 {
-    uint8_t id = FfbAcabus_AddEffect(effectType);
-    FfbEffect *effect = FfbAcabus_GetEffect(id);
+    uint8_t id = FfbAbacus_AddEffect(effectType);
+    FfbEffect *effect = FfbAbacus_GetEffect(id);
     effect->directionX = 1.0f;
     effect->directionY = 1.0f;
     effect->magnitude = 170;
-    FfbAcabus_StartEffect(id);
+    FfbAbacus_StartEffect(id);
     return id;
 }
 
 uint8_t FfbDirect_GetMaxSimultaneousEffects(void)
 {
-    return FfbAcabus_GetMaxEffects();
+    return FfbAbacus_GetMaxEffects();
 }
 
 void FfbDirect_MaintainEffects(int16_t x, int16_t y, uint16_t dt)
@@ -233,7 +233,7 @@ void FfbDirect_MaintainEffects(int16_t x, int16_t y, uint16_t dt)
         // Call the effect calculation and actuate motors
         ForceUnit fx = 0;
         ForceUnit fy = 0;
-        FfbAcabus_CalculateForces(x, y, x - gLastPosX, y - gLastPosY, dt, &fx, &fy);
+        FfbAbacus_CalculateForces(x, y, x - gLastPosX, y - gLastPosY, dt, &fx, &fy);
         gLastPosX = x;
         gLastPosY = y;
         L298N_SetMotors(fx, fy);
