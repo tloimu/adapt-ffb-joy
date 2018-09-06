@@ -14,6 +14,12 @@ void expect(long expected, long actual)
 		fail();
 }
 
+void expectPointer(void* expected, void *actual)
+{
+	if (expected != actual)
+		fail();
+}
+
 void expectF(float expected, float actual)
 {
 	if (expected != actual)

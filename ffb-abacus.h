@@ -65,21 +65,19 @@ void FfbAbacus_Init(void);
 uint8_t FfbAbacus_GetMaxEffects(void);
 
 // Each return the handle to the effect or INVALID_EFFECT if no free slots are available.
-/* Effect Type:
-    null=0, // Not known (yet)
-    calcEffectConstant=1,	// Constant, 
-    calcEffectRamp, 	// Ramp
-    calcEffectSquare, 	// Square
-    calcEffectSine, 	// Sine
-    calcEffectTriangle,	// Triangle
-    CalcEffectSawtoothDown,	// SawtoothDown
-    CalcEffectSawtoothUp,	// SawtoothUp
-    CalcEffectSpring,	// Spring
-    CalcEffectDamper,	// Damper
-    CalcEffectInertia,	// Inertia
-    CalcEffectFriction,	// Friction
-    CalcEffectCustom 	// Custom ?
-*/
+extern const uint8_t FfbEffectType_None;
+extern const uint8_t FfbEffectType_Constant;
+extern const uint8_t FfbEffectType_Ramp;
+extern const uint8_t FfbEffectType_Square;
+extern const uint8_t FfbEffectType_Sine;
+extern const uint8_t FfbEffectType_Triangle;
+extern const uint8_t FfbEffectType_SawtoothUp;
+extern const uint8_t FfbEffectType_SawtoothDown;
+extern const uint8_t FfbEffectType_Sprint;
+extern const uint8_t FfbEffectType_Damper;
+extern const uint8_t FfbEffectType_Inertia;
+extern const uint8_t FfbEffectType_Friction;
+extern const uint8_t FfbEffectType_Custom;
 
 uint8_t FfbAbacus_AddEffect(uint8_t effectType);
 

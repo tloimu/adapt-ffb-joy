@@ -59,15 +59,15 @@
     </com_atmel_avrdbg_tool_simulator>
     <AsfFrameworkConfig>
       <framework-data xmlns="">
-  <options />
-  <configurations />
-  <files />
-  <documentation help="" />
-  <offline-documentation help="" />
-  <dependencies>
-    <content-extension eid="atmel.asf" uuidref="Atmel.ASF" version="3.40.0" />
-  </dependencies>
-</framework-data>
+        <options />
+        <configurations />
+        <files />
+        <documentation help="" />
+        <offline-documentation help="" />
+        <dependencies>
+          <content-extension eid="atmel.asf" uuidref="Atmel.ASF" version="3.40.0" />
+        </dependencies>
+      </framework-data>
     </AsfFrameworkConfig>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
@@ -161,16 +161,36 @@
     </Compile>
     <Compile Include="../ffb-abacus.c">
       <SubType>compile</SubType>
+      <Link>ffb-abacus.c</Link>
     </Compile>
     <Compile Include="../ffb-abacus.h">
       <SubType>compile</SubType>
+      <Link>ffb-abacus.h</Link>
     </Compile>
-    <Compile Include="testConstant.c">
+    <Compile Include="../ffb-abacus-calc.h">
+      <SubType>compile</SubType>
+      <Link>ffb-abacus-calc.h</Link>
+    </Compile>
+    <Compile Include="testCalcForces.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="testSetFromUsb.c">
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="testsuites.h">
       <SubType>compile</SubType>
     </Compile>
+    <Compile Include="testUtils.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="testUtils.h">
+      <SubType>compile</SubType>
+    </Compile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="readme.md">
+      <SubType>compile</SubType>
+    </None>
   </ItemGroup>
   <Import Project="$(AVRSTUDIO_EXE_PATH)\\Vs\\Compiler.targets" />
 </Project>

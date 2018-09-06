@@ -1,4 +1,5 @@
 #include "ffb-abacus.h"
+#include "ffb-abacus-calc.h"
 #include <math.h>
 #include <string.h>
 
@@ -12,9 +13,27 @@ const ForceUnit MAX_FORCE = 255;
 const uint8_t INVALID_EFFECT = 0;
 const TimeUnit DURATION_INFINITE = -1;
 
+const uint8_t FfbEffectType_None = 0;
+const uint8_t FfbEffectType_Constant = 1;
+const uint8_t FfbEffectType_Ramp = 2;
+const uint8_t FfbEffectType_Square = 3;
+const uint8_t FfbEffectType_Sine = 4;
+const uint8_t FfbEffectType_Triangle = 5;
+const uint8_t FfbEffectType_SawtoothUp = 6;
+const uint8_t FfbEffectType_SawtoothDown = 7;
+const uint8_t FfbEffectType_Sprint = 8;
+const uint8_t FfbEffectType_Damper = 9;
+const uint8_t FfbEffectType_Inertia = 10;
+const uint8_t FfbEffectType_Friction = 11;
+const uint8_t FfbEffectType_Custom = 12;
+
 // -----------------------------------
 // Internal utilities and globals
 // -----------------------------------
+void calcRemainingPhaseTime(FfbEffect *effect, TimeUnit timeDelta)
+{
+	// ???? TODO:
+}
 
 #define MAX_EFFECTS 20
 
@@ -39,10 +58,6 @@ uint8_t findFreeEffectSlot(void)
     return INVALID_EFFECT;
 }
 
-void calcRemainingPhaseTime(FfbEffect *effect, TimeUnit timeDelta)
-{
-    // ???? TODO:
-}
 
 void calcEnvelope(FfbEffect *effect, ForceUnit *ioFx, ForceUnit *ioFy)
 {
@@ -52,9 +67,11 @@ void calcEnvelope(FfbEffect *effect, ForceUnit *ioFx, ForceUnit *ioFy)
 void calcEffectLocalTime(FfbEffect *effect, TimeUnit dt)
 {
     // Advance the effect's local time with the given dt and stop it if duration has passed
+	// ???? TODO: Take care of localTime's overflow that the result is smooth with all periodic effects
+
     effect->localTime += dt;
 
-    if (effect->localTime > (effect->delay + effect->duration))
+    if (effect->duration != DURATION_INFINITE && effect->localTime > (effect->delay + effect->duration))
         effect->enabled = 0;
 }
 
@@ -62,7 +79,6 @@ void calcEffectLocalTime(FfbEffect *effect, TimeUnit dt)
 // Implement the force calculation functions
 // -------------------------------------------
 
-void calcEffectConstant(FfbEffect *effect, PositionUnit x, PositionUnit y, PositionUnit dx, PositionUnit dy, TimeUnit timeDelta, ForceUnit *outFx, ForceUnit *outFy);
 void calcEffectConstant(
     FfbEffect *effect, PositionUnit x, PositionUnit y, PositionUnit dx, PositionUnit dy, TimeUnit timeDelta, ForceUnit *outFx, ForceUnit *outFy)
 {
@@ -70,7 +86,6 @@ void calcEffectConstant(
     *outFy = effect->magnitude * effect->directionY;
 }
 
-void calcEffectSine(FfbEffect *effect, PositionUnit x, PositionUnit y, PositionUnit dx, PositionUnit dy, TimeUnit timeDelta, ForceUnit *outFx, ForceUnit *outFy);
 void calcEffectSine(
     FfbEffect *effect, PositionUnit x, PositionUnit y, PositionUnit dx, PositionUnit dy, TimeUnit timeDelta, ForceUnit *outFx, ForceUnit *outFy)
 {
@@ -80,7 +95,6 @@ void calcEffectSine(
 	*outFy = a * effect->directionY;
 }
 
-void calcEffectSquare(FfbEffect *effect, PositionUnit x, PositionUnit y, PositionUnit dx, PositionUnit dy, TimeUnit timeDelta, ForceUnit *outFx, ForceUnit *outFy);
 void calcEffectSquare(
     FfbEffect *effect, PositionUnit x, PositionUnit y, PositionUnit dx, PositionUnit dy, TimeUnit timeDelta, ForceUnit *outFx, ForceUnit *outFy)
 {
@@ -97,21 +111,18 @@ void calcEffectSquare(
 		}
 }
 
-void calcEffectTriangle(FfbEffect *effect, PositionUnit x, PositionUnit y, PositionUnit dx, PositionUnit dy, TimeUnit timeDelta, ForceUnit *outFx, ForceUnit *outFy);
 void calcEffectTriangle(
     FfbEffect *effect, PositionUnit x, PositionUnit y, PositionUnit dx, PositionUnit dy, TimeUnit timeDelta, ForceUnit *outFx, ForceUnit *outFy)
 {
 	// ???? TODO:
 }
 
-void calcEffectFriction(FfbEffect *effect, PositionUnit x, PositionUnit y, PositionUnit dx, PositionUnit dy, TimeUnit timeDelta, ForceUnit *outFx, ForceUnit *outFy);
 void calcEffectFriction(
     FfbEffect *effect, PositionUnit x, PositionUnit y, PositionUnit dx, PositionUnit dy, TimeUnit timeDelta, ForceUnit *outFx, ForceUnit *outFy)
 {
     // ???? TODO: use axis acceleration as metric
 }
 
-void calcEffectInertia(FfbEffect *effect, PositionUnit x, PositionUnit y, PositionUnit dx, PositionUnit dy, TimeUnit timeDelta, ForceUnit *outFx, ForceUnit *outFy);
 void calcEffectInertia(
     FfbEffect *effect, PositionUnit x, PositionUnit y, PositionUnit dx, PositionUnit dy, TimeUnit timeDelta, ForceUnit *outFx, ForceUnit *outFy)
 {
@@ -131,7 +142,6 @@ void trimForces(ForceUnit *fx, ForceUnit *fy)
         *fy = -MAX_FORCE;
 }
 
-void calcEffectSpring(FfbEffect *effect, PositionUnit x, PositionUnit y, PositionUnit dx, PositionUnit dy, TimeUnit timeDelta, ForceUnit *outFx, ForceUnit *outFy);
 void calcEffectSpring(
     FfbEffect *effect, PositionUnit x, PositionUnit y, PositionUnit dx, PositionUnit dy, TimeUnit timeDelta, ForceUnit *outFx, ForceUnit *outFy)
 {
@@ -149,42 +159,36 @@ void calcEffectSpring(
     *outFy = -( (y - effect->y) * effect->coeffY );
 }
 
-void calcEffectSawtoothDown(FfbEffect *effect, PositionUnit x, PositionUnit y, PositionUnit dx, PositionUnit dy, TimeUnit timeDelta, ForceUnit *outFx, ForceUnit *outFy);
 void calcEffectSawtoothDown(
     FfbEffect *effect, PositionUnit x, PositionUnit y, PositionUnit dx, PositionUnit dy, TimeUnit timeDelta, ForceUnit *outFx, ForceUnit *outFy)
 {
     // ???? TODO:
 }
 
-void calcEffectSawtoothUp(FfbEffect *effect, PositionUnit x, PositionUnit y, PositionUnit dx, PositionUnit dy, TimeUnit timeDelta, ForceUnit *outFx, ForceUnit *outFy);
 void calcEffectSawtoothUp(
     FfbEffect *effect, PositionUnit x, PositionUnit y, PositionUnit dx, PositionUnit dy, TimeUnit timeDelta, ForceUnit *outFx, ForceUnit *outFy)
 {
     // ???? TODO:
 }
 
-void calcEffectRamp(FfbEffect *effect, PositionUnit x, PositionUnit y, PositionUnit dx, PositionUnit dy, TimeUnit timeDelta, ForceUnit *outFx, ForceUnit *outFy);
 void calcEffectRamp(
     FfbEffect *effect, PositionUnit x, PositionUnit y, PositionUnit dx, PositionUnit dy, TimeUnit timeDelta, ForceUnit *outFx, ForceUnit *outFy)
 {
     // ???? TODO:
 }
 
-void calcEffectDamper(FfbEffect *effect, PositionUnit x, PositionUnit y, PositionUnit dx, PositionUnit dy, TimeUnit timeDelta, ForceUnit *outFx, ForceUnit *outFy);
 void calcEffectDamper(
     FfbEffect *effect, PositionUnit x, PositionUnit y, PositionUnit dx, PositionUnit dy, TimeUnit timeDelta, ForceUnit *outFx, ForceUnit *outFy)
 {
     // ???? TODO: use axis velocity as metric
 }
 
-void calcEffectCustom(FfbEffect *effect, PositionUnit x, PositionUnit y, PositionUnit dx, PositionUnit dy, TimeUnit timeDelta, ForceUnit *outFx, ForceUnit *outFy);
 void calcEffectCustom(
     FfbEffect *effect, PositionUnit x, PositionUnit y, PositionUnit dx, PositionUnit dy, TimeUnit timeDelta, ForceUnit *outFx, ForceUnit *outFy)
 {
     // ???? TODO:
 }
 
-void calcEffectAutoCenter(PositionUnit x, PositionUnit y, PositionUnit dx, PositionUnit dy, ForceUnit *outFx, ForceUnit *outFy);
 void calcEffectAutoCenter(PositionUnit x, PositionUnit y, PositionUnit dx, PositionUnit dy, ForceUnit *outFx, ForceUnit *outFy)
 {
     *outFx = -(x / 2);
@@ -358,7 +362,7 @@ void FfbAbacus_SetEffectPeriodic(FfbEffect *effect, USB_FFBReport_SetPeriodic_Ou
 */
     // ???? TODO:
 	effect->magnitude = data->magnitude;
-	effect->phase = ( data->phase * 32 ) / 45; // 0..255 => 0..360
+	effect->phase = ( data->phase * 45 ) / 32; // 0..255 => 0..360
 	effect->frequency = 1000.0f / data->period;
 	// ... data->offset
 }

@@ -8,7 +8,8 @@ void testSuiteConstantForce();
 int main(void)
 {
 	FfbAbacus_Init();
-	testSuiteConstantForce();
+	testSuiteSetFromUsb();
+	testSuiteCalcForces();
 
 	runAllTests();
 

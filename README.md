@@ -13,22 +13,26 @@ The firmware software project is configured to compile for ATmega32U4 with WinAV
     - Starting and stopping of the effect
     - The code architecture
     - The electronics
+    - Constant force
+    - Some periodic forces like sine and square
+    - Device gain
 
 ## Next
-    - Constant force
-    - Periodic forces like sine, square, triangle
+    - Periodic forces like triangle and sawtooths
     - Ramp force
     - Effect envelope
     - Effect gain
-    - Device gain
 
 ## Open questions
 
     - Can ATMega32U4 (Teensy) handle it all or is there need for more memory or calculation power?
-    - 
 
 ## Why
 
 The MIDI-like protocol in FFP was reverse engineered in Adapt-FFB-Joy project already. But not 100%. And it wasn't really reliable. Also, the FFP's own firmware didn't really implement it all. And some of the things it did implement, weren't really perfect. So, with this approach, the FFP can be made even better than the original was with still very modest investements and fair level complexity of building it yourself.
 
 Another reason is to provide a starting point for software for other force feedback joystick builders that have awesome hardward, but no software to run it with in Windows and in games especially.
+
+## Developing the code
+
+The code is compiled from the **makefile** using **make**. Unit tests are done using Atmel Studio and are found in **test** subdirectory with more instructions for unit testing in the **readme.md** file there.
