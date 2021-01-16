@@ -114,7 +114,7 @@ void Joystick_Init(void)
 //	ADCSRA |= (1 << ADATE); 	// free/continous mode
 	ADMUX |= (1 << ADLAR); 		// 8-bit resolution to HIGH
 	ADCSRA |= (1 << ADEN); 		// Enable ADC
-	ADCSRA |= (1 << ADIE);  	// Enable ADC Interrupt 
+	ADCSRA |= (1 << ADIE);  	// Enable ADC Interrupt
 
 	ADCSRA |= (1 << ADSC); 		// Go ADC
 	}
@@ -166,26 +166,26 @@ int Joystick_CreateInputReport(uint8_t inReportId, USB_JoystickReport_Data_t* co
 	// -------------------------------------------------------------------------------
 	// *******************************************************************************
 	// 	Decode the raw FFP/PP data and store it into sw_report
-	// 
+	//
 	//  Input:
 	// 	Pointer to start of packet to copy
-	// 
+	//
 	// 	FFP/PP data packet structure
 	// 	============================
-	// 
+	//
 	// 	44444444 33333333 33222222 22221111 11111100 00000000
 	// 	76543210 98765432 10987654 32109876 54321098 76543210
 	// 	-------0 -------1 -------2 -------3 -------4 -------5
 	// 	ppHHHHRR RRRRTTTT TTTYYYYY YYYYYXXX XXXXXXXB BBBBBBBB
 	// 	  321054 32106543 21098765 43210987 65432109 87654321
-	// 
+	//
 	// 	USB report data structure
 	// 	=========================
-	// 
+	//
 	// 	-------0 -------1 -------2 -------3 -------4 -------5
 	// 	XXXXXXXX YYYYYYXX HHHHYYYY BBRRRRRR TBBBBBBB 00TTTTTT
 	// 	76543210 54321098 32109876 21543210 09876543   654321
-	// 
+	//
 	// -------------------------------------------------------------------------------
 
 	// Copy the data to the USB report
@@ -240,13 +240,13 @@ int Joystick_CreateInputReport(uint8_t inReportId, USB_JoystickReport_Data_t* co
 
 /*
 5 wwwwwwww
-4 aaaaaaww 
+4 aaaaaaww
 3 BAbbbbbb
 2 1FLZYXRC
 1 p-------
 0 --------
 */
-		
+
 	// Convert the raw input data to USB report
 
 	outReportData->reportId = 1;	// Input report ID 1
@@ -265,24 +265,39 @@ int Joystick_CreateInputReport(uint8_t inReportId, USB_JoystickReport_Data_t* co
 		outReportData->X = sw_report[0] + ((sw_report[1] & 0x03) << 8);
 		if (sw_report[1] & 0x02)
 			outReportData->X |= (0b11111100 << 8);
-		
-		
+
+
 		outReportData->Y = (sw_report[1] >> 2) + ((sw_report[2] & 0x0F) << 6);
 		if (sw_report[2] & 0x08)
 			outReportData->Y |= (0b11111100 << 8);
-		outReportData->Button = ((sw_report[4] & 0x7F) << 2) + ((sw_report[3] & 0xC0) >> 6);
+
+		// this part makes Shift act like a shift.
+		// Btn1-8 will be Btn9-16 when shifted
+		if ((sw_report[4] & 0b01000000) == 0b01000000)
+        {
+            // button 9 (shift) is held down
+            sw_report[4] &= 0b10111111;     // Lift up button 9; it's not to be used alone.
+            outReportData->Button = ((sw_report[4] & 0x7F) << 10) + ((sw_report[3] & 0xC0) << 2);
+        }
+        else
+        {
+            // button 9 (shift) is not pressed, just report as usual
+            outReportData->Button = ((sw_report[4] & 0x7F) << 2) + ((sw_report[3] & 0xC0) >> 6);
+        }
+
 		outReportData->Hat = sw_report[2] >> 4;
 		outReportData->Rz = (sw_report[3] & 0x3f) - 32;
 		outReportData->Throttle = ((sw_report[5] & 0x3f) << 1) + (sw_report[4] >> 7);
 		if (sw_report[5] & 0x20)
 			outReportData->Throttle |= 0b11000000;
 
-		outReportData->Z = 0;	// not used at the moment
+		//outReportData->Z = 0;	// not used at the moment
 
 		// Get data from additional controls
-		outReportData->Rudder = (added_controls_adc.pedal2 - added_controls_adc.pedal1) / 2 - 128;	// Combine two pedals into a single rudder
+		/*outReportData->Rudder = (added_controls_adc.pedal2 - added_controls_adc.pedal1) / 2 - 128;	// Combine two pedals into a single rudder
 		outReportData->Rx = added_controls_adc.trim2;	// rudder trim
-		outReportData->Ry = added_controls_adc.trim1;	// elevator trim
+		outReportData->Ry = added_controls_adc.trim1;	// elevator trim*/
+		
 		}
 
 /*
@@ -337,7 +352,7 @@ int Joystick_CreateInputReport(uint8_t inReportId, USB_JoystickReport_Data_t* co
 // the actual data can be read later when there
 // is more time. Doing any heavier stuff here
 // seems to cause problems reading data from FFP joystick.
-ISR(ADC_vect) 
+ISR(ADC_vect)
 	{
 	ADC_is_ready = 1;
 	}

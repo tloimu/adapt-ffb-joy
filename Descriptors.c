@@ -61,12 +61,12 @@ const USB_Descriptor_HIDReport_Datatype_t PROGMEM JoystickReport[] =
     HID_RI_COLLECTION(8, 0x00), // Physical
         HID_RI_USAGE(8, 0x30), // Usage X
         HID_RI_USAGE(8, 0x31), // Usage Y
-        HID_RI_USAGE(8, 0x32), // Usage Z
+        //HID_RI_USAGE(8, 0x32), // Usage Z
         HID_RI_LOGICAL_MINIMUM(16, -512),
         HID_RI_LOGICAL_MAXIMUM(16, 511),
         HID_RI_PHYSICAL_MINIMUM(8, 0),
         HID_RI_PHYSICAL_MAXIMUM(16, 1023),
-        HID_RI_REPORT_COUNT(8, 0x03),
+        HID_RI_REPORT_COUNT(8, 0x02),
         HID_RI_REPORT_SIZE(8, 0x10),
         HID_RI_INPUT(8, HID_IOF_DATA | HID_IOF_VARIABLE | HID_IOF_ABSOLUTE),
 
@@ -86,7 +86,7 @@ const USB_Descriptor_HIDReport_Datatype_t PROGMEM JoystickReport[] =
 
 		0x65, 0x00,		//     UNIT (None)
 
-		0x09, 0x33,     //   USAGE (Rx)
+		/*0x09, 0x33,     //   USAGE (Rx)
 		0x09, 0x34,		//   USAGE (Ry)
 	    HID_RI_LOGICAL_MINIMUM(8, 0),
 	    HID_RI_LOGICAL_MAXIMUM(8, 255),
@@ -94,17 +94,17 @@ const USB_Descriptor_HIDReport_Datatype_t PROGMEM JoystickReport[] =
 	    HID_RI_REPORT_SIZE(8, 0x08),
         HID_RI_REPORT_SIZE(8, 0x08),
 	    HID_RI_REPORT_COUNT(8, 0x02),
-		HID_RI_INPUT(8, HID_IOF_DATA | HID_IOF_VARIABLE | HID_IOF_ABSOLUTE),
+		HID_RI_INPUT(8, HID_IOF_DATA | HID_IOF_VARIABLE | HID_IOF_ABSOLUTE),*/
 
     HID_RI_END_COLLECTION(0),
 
-	0x09, 0x36,		//   USAGE (Rudder - hmm...actual rudder code 0xBA does not seem to work in Windows - so use slider)
+	/*0x09, 0x36,		//   USAGE (Rudder - hmm...actual rudder code 0xBA does not seem to work in Windows - so use slider)
     HID_RI_LOGICAL_MINIMUM(8, -128),
     HID_RI_LOGICAL_MAXIMUM(8, 127),
     HID_RI_PHYSICAL_MAXIMUM(8, 255),
     HID_RI_REPORT_SIZE(8, 0x08),
     HID_RI_REPORT_COUNT(8, 0x01),
-	HID_RI_INPUT(8, HID_IOF_DATA | HID_IOF_VARIABLE | HID_IOF_ABSOLUTE),
+	HID_RI_INPUT(8, HID_IOF_DATA | HID_IOF_VARIABLE | HID_IOF_ABSOLUTE),*/
 
 	0x05, 0x02,                    //   USAGE_PAGE (Simulation Controls)
 
@@ -1768,16 +1768,16 @@ const USB_Descriptor_String_t PROGMEM ManufacturerString =
  */
 const USB_Descriptor_String_t PROGMEM ProductStringJoystick =
 {
-	.Header                 = {.Size = USB_STRING_LEN(18), .Type = DTYPE_String},
+	.Header                 = {.Size = USB_STRING_LEN(17), .Type = DTYPE_String},
 
-	.UnicodeString          = L"LUFA Joystick wFFB"
+	.UnicodeString          = L"MS SidewinderPro FFB"
 };
 
 const USB_Descriptor_String_t PROGMEM ProductStringWheel =
 {
-	.Header                 = {.Size = USB_STRING_LEN(15), .Type = DTYPE_String},
+	.Header                 = {.Size = USB_STRING_LEN(17), .Type = DTYPE_String},
 
-	.UnicodeString          = L"LUFA Wheel wFFB"
+	.UnicodeString          = L"MS SidewinderWheel FFB"
 };
 
 /** This function is called by the library when in device mode, and must be overridden (see library "USB Descriptors"
