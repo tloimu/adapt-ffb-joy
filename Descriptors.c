@@ -1768,14 +1768,14 @@ const USB_Descriptor_String_t PROGMEM ManufacturerString =
  */
 const USB_Descriptor_String_t PROGMEM ProductStringJoystick =
 {
-	.Header                 = {.Size = USB_STRING_LEN(17), .Type = DTYPE_String},
+	.Header                 = {.Size = USB_STRING_LEN(20), .Type = DTYPE_String},
 
 	.UnicodeString          = L"MS SidewinderPro FFB"
 };
 
 const USB_Descriptor_String_t PROGMEM ProductStringWheel =
 {
-	.Header                 = {.Size = USB_STRING_LEN(17), .Type = DTYPE_String},
+	.Header                 = {.Size = USB_STRING_LEN(22), .Type = DTYPE_String},
 
 	.UnicodeString          = L"MS SidewinderWheel FFB"
 };
