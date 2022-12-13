@@ -39,12 +39,12 @@
  *	================
  *
 *	PB0	--			PD0	Button1	(INT)	PF0	--
- *	PB1	Button2		PD1	Button1			PF1	--
+ *	PB1	Button2		PD1	--			PF1	--
  *	PB2	Button3		PD2	--				PE2	--
  *	PB3	Button4		PD3	MIDI (out)
  *	PB4	X1 axis		PD4	--				PF4	--
  *	PB5	Y2 axis		PD5	LED				PF5	--
- *	PB6	--	PC6	--	PD6	--		PE6	--	PF6	--
+ *	PB6	Button1		PC6	--	PD6	--		PE6	--	PF6	--
  *	PB7	--	PC7	--	PD7	--				PF7	--
  *
  *	Pinout AT90USBX6 (out dated!)

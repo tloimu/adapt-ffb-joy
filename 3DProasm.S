@@ -26,7 +26,7 @@
 ;*	Joystick button mapping
 ;*	=======================
 ;*
-;*	B1 - PD1
+;*	B1 - PB6
 ;*	B2 - PB1
 ;*	B3 - PB2
 ;*	B4 - PB3

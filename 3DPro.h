@@ -92,7 +92,7 @@
 #define TRGX1BIT	DDB4
 
 #define	BUTPIN		PINB
-#define	BUT1		PD1
+#define	BUT1		PB6
 #define	BUT2		PB1
 #define	BUT3		PB2
 #define	BUT4		PB3
