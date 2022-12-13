@@ -78,7 +78,7 @@
 // Port B
 
 #define PBPU		(PU1( PB7) | PU1( PB6) | PU0( PB5) | PU0( PB4) | \
-			 PU1( PB3) | PU1( PB2) | PU1( PB1) | PU1( PD1))
+			 PU1( PB3) | PU1( PB2) | PU1( PB1) | PU0( PB0))
 #define DDB		(DDI(DDB7) | DDI(DDB6) | DDI(DDB5) | DDI(DDB4) | \
 			 DDI(DDB3) | DDI(DDB2) | DDI(DDB1) | DDI(DDB0))
 
