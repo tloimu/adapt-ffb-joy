@@ -216,8 +216,8 @@ int16_t UsbInt8ToMidiInt14(int8_t inUsbValue)
 // Returns MIDI value (i.e. max 0..7f).
 uint8_t CalcGain(uint8_t usbValue, uint8_t gain)
 	{
-	int16_t v = usbValue;
-	return (((v * gain) / 256) >> 2 ) & 0x7f;
+	uint16_t v = usbValue;
+	return (((v * gain) / 255) >> 1 ) & 0x7f;
 	}
 
 // Lengths of each report type
