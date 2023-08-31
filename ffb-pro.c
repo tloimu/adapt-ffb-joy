@@ -5,6 +5,7 @@
 
   Copyright 2012  Tero Loimuneva (tloimu [at] gmail [dot] com)
   Copyright 2013  Saku Kekkonen
+  Copyright 2023  Ed Wilkinson
 
   Permission to use, copy, modify, distribute, and sell this
   software and its documentation for any purpose is hereby granted
@@ -238,20 +239,21 @@ void FfbproSetEnvelope(
 	MIDI effect data:
 		uint8_t command;	// always 0x23	-- start counting checksum from here
 		uint8_t waveForm;	// 2=sine, 5=Square, 6=RampUp, 7=RampDown, 8=Triange, 0x12=Constant
-		uint8_t unknown1;	// ? always 0x7F
+		uint8_t unknown1;	// Overwrite an allocated effect 
 		uint16_t duration;	// unit=2ms
-		uint16_t unknown2;	// ? always 0x0000
+		uint16_t triggerButton;	// Bitwise buttons 1 to 9 from LSB
 		uint16_t direction;
-		uint8_t	unknown3[5];	// ? always 7f 64 00 10 4e
+		uint8_t gain;
+		uint16_t sampleRate;	//default 0x64 0x00 = 100Hz
+		uint16_t truncate;		//default 0x10 0x4e = 10000 for full waveform
 		uint8_t attackLevel;
 		uint16_t	attackTime;
 		uint8_t		magnitude;
 		uint16_t	fadeTime;
 		uint8_t	fadeLevel;
-		uint8_t	waveLength;	// 0x6F..0x01 => 1/Hz
-		uint8_t unknown5;	// ? always 0x00
-		uint16_t param1;	// Constant: positive=7f 00, negative=01 01, Other effects: 01 01
-		uint16_t param2;	// Constant: 00 00, Other effects 01 01
+		uint16_t frequency;	// unit=Hz; 1 for constant and ramps
+		uint16_t param1;	// Varies by effect type; Constant: positive=7f 00, negative=01 01, Other effects: 01 01
+		uint16_t param2;	// Varies by effect type; Constant: 00 00, Other effects 01 01
 	*/
 	
 	if (DoDebug(DEBUG_DETAIL))
@@ -275,12 +277,12 @@ void FfbproSetEnvelope(
 	midi_data->attackLevel = CalcGain(data->attackLevel, effect->usb_gain);
 	midi_data->fadeLevel = CalcGain(data->fadeLevel, effect->usb_gain);
 
-	midi_data->attackTime = UsbUint16ToMidiUint14(data->attackTime);
+	midi_data->attackTime = UsbUint16ToMidiUint14_Time(data->attackTime);
 
 	if (data->fadeTime == USB_DURATION_INFINITE)
 		midi_data->fadeTime = MIDI_DURATION_INFINITE;
 	else
-		midi_data->fadeTime = UsbUint16ToMidiUint14(effect->usb_duration - effect->usb_fadeTime);
+		midi_data->fadeTime = UsbUint16ToMidiUint14_Time(effect->usb_duration - effect->usb_fadeTime);
 
 	if (effect->state & MEffectState_SentToJoystick) {
 		FfbproSendModify(eid, 0x60, midi_data->fadeTime);
@@ -418,13 +420,13 @@ void FfbproSetPeriodic(
 	midi_data->param1 = 0x007f;
 	midi_data->param2 = 0x0101;
 
-	// Calculate waveLength (in MIDI it is in units of 1/Hz and can have value 0x6F..0x01)
+	// Calculate frequency (in MIDI it is in units of Hz and can have value from 1 to 169Hz)
 	if (data->period >= 1000)
-		midi_data->waveLength = 0x01;
-	else if (data->period <= 9)
-		midi_data->waveLength = 0x6F;
+		midi_data->frequency = 0x0001; //1Hz
+	else if (data->period <= 5)
+		midi_data->frequency = 0x0129; //169Hz
 	else
-		midi_data->waveLength = (1000 / data->period) & 0x7F;
+		midi_data->frequency = UsbUint16ToMidiUint14(1000 / data->period);
 
 	// Check phase if relevant (+90 phase for sine makes it a cosine)
 	if (midi_data->waveForm == 2 || midi_data->waveForm == 3) // sine
@@ -447,7 +449,7 @@ void FfbproSetPeriodic(
 
 	if (effect->state & MEffectState_SentToJoystick) {
 		// FfbProSendModify(eid, 0x74, midi_data->magnitude); // FFP does not actually support changing magnitude on-fly here
-		FfbproSendModify(eid, 0x70, midi_data->waveLength);
+		FfbproSendModify(eid, 0x70, midi_data->frequency);
 	}
 }
 
@@ -465,20 +467,22 @@ void FfbproSetConstantForce(
 	MIDI effect data:
 		uint8_t command;	// always 0x23	-- start counting checksum from here
 		uint8_t waveForm;	// 2=sine, 5=Square, 6=RampUp, 7=RampDown, 8=Triange, 0x12=Constant
-		uint8_t unknown1;	// ? always 0x7F
+		uint8_t unknown1;	// Overwrite an allocated effect 
 		uint16_t duration;	// unit=2ms
-		uint16_t unknown2;	// ? always 0x0000
+		uint16_t triggerButton;	// Bitwise buttons 1 to 9 from LSB
 		uint16_t direction;
-		uint8_t	unknown3[5];	// ? always 7f 64 00 10 4e
+		uint8_t gain;
+		uint16_t sampleRate;	//default 0x64 0x00 = 100Hz
+		uint16_t truncate;		//default 0x10 0x4e = 10000 for full waveform
 		uint8_t attackLevel;
 		uint16_t	attackTime;
 		uint8_t		magnitude;
 		uint16_t	fadeTime;
 		uint8_t	fadeLevel;
-		uint8_t	waveLength;	// 0x6F..0x01 => 1/Hz
-		uint8_t unknown5;	// ? always 0x00
-		uint16_t param1;	// Constant: positive=7f 00, negative=01 01, Other effects: 01 01
-		uint16_t param2;	// Constant: 00 00, Other effects 01 01
+		uint16_t frequency;	// unit=Hz; 1 for constant and ramps
+		uint16_t param1;	// Varies by effect type; Constant: positive=7f 00, negative=01 01, Other effects: 01 01
+		uint16_t param2;	// Varies by effect type; Constant: 00 00, Other effects 01 01
+
 	*/
 	
 	if (DoDebug(DEBUG_DETAIL))
@@ -591,20 +595,22 @@ int FfbproSetEffect(
 			MIDI effect data:
 				uint8_t command;	// always 0x23	-- start counting checksum from here
 				uint8_t waveForm;	// 2=sine, 5=Square, 6=RampUp, 7=RampDown, 8=Triange, 0x12=Constant
-				uint8_t unknown1;	// ? always 0x7F
+				uint8_t unknown1;	// Overwrite an allocated effect 
 				uint16_t duration;	// unit=2ms
-				uint16_t unknown2;	// ? always 0x0000
+				uint16_t triggerButton;	// Bitwise buttons 1 to 9 from LSB
 				uint16_t direction;
-				uint8_t	unknown3[5];	// ? always 7f 64 00 10 4e
+				uint8_t gain;
+				uint16_t sampleRate;	//default 0x64 0x00 = 100Hz
+				uint16_t truncate;		//default 0x10 0x4e = 10000 for full waveform
 				uint8_t attackLevel;
 				uint16_t	attackTime;
 				uint8_t		magnitude;
 				uint16_t	fadeTime;
 				uint8_t	fadeLevel;
-				uint8_t	waveLength;	// 0x6F..0x01 => 1/Hz
-				uint8_t unknown5;	// ? always 0x00
-				uint16_t param1;	// Constant: positive=7f 00, negative=01 01, Other effects: 01 01
-				uint16_t param2;	// Constant: 00 00, Other effects 01 01
+				uint16_t frequency;	// unit=Hz; 1 for constant and ramps
+				uint16_t param1;	// Varies by effect type; Constant: positive=7f 00, negative=01 01, Other effects: 01 01
+				uint16_t param2;	// Varies by effect type; Constant: 00 00, Other effects 01 01
+
 			*/
 
 			// Convert direction
@@ -622,7 +628,7 @@ int FfbproSetEffect(
 				} else {
 					if (effect->usb_duration > effect->usb_fadeTime) {
 						// add some safety and special case handling
-						midi_data->fadeTime = UsbUint16ToMidiUint14(effect->usb_duration - effect->usb_fadeTime);
+						midi_data->fadeTime = UsbUint16ToMidiUint14_Time(effect->usb_duration - effect->usb_fadeTime);
 					} else {
 						midi_data->fadeTime = midi_data->duration;
 					}
@@ -682,7 +688,7 @@ int FfbproSetEffect(
 				uint8_t waveForm;	// 2=sine, 5=Square, 6=RampUp, 7=RampDown, 8=Triange, 0x12=Constant
 				uint8_t unknown1;	// ? always 0x7F
 				uint16_t duration;	// unit=2ms
-				uint16_t unknown2;	// ? always 0x0000
+				uint16_t triggerButton;	// Bitwise buttons 1 to 9 from LSB
 				uint16_t coeffAxis0;
 				uint16_t coeffAxis1;
 				uint16_t offsetAxis0;
@@ -705,7 +711,7 @@ int FfbproSetEffect(
 				uint8_t waveForm;	// 2=sine, 5=Square, 6=RampUp, 7=RampDown, 8=Triange, 0x12=Constant
 				uint8_t unknown1;	// ? always 0x7F
 				uint16_t duration;	// unit=2ms
-				uint16_t unknown2;	// ? always 0x0000
+				uint16_t triggerButton;	// Bitwise buttons 1 to 9 from LSB
 				uint16_t coeffAxis0;
 				uint16_t coeffAxis1;
 			*/
@@ -746,22 +752,19 @@ void FfbproCreateNewEffect(
 	volatile FFP_MIDI_Effect_Basic *midi_data = (volatile FFP_MIDI_Effect_Basic *)&effect->data;
 
 	midi_data->magnitude = 0x7f;
-	midi_data->waveLength = 0x01;
+	midi_data->frequency = 0x0001;
 	midi_data->attackLevel = 0x00;
 	midi_data->attackTime = 0x0000;
 	midi_data->fadeLevel = 0x00;
 	midi_data->fadeTime = 0x0000;
-
+	
 	// Constants
 	midi_data->command = 0x23;
 	midi_data->unknown1 = 0x7F;
-	midi_data->unknown2 = 0x0000;
-	midi_data->unknown3[0] = 0x7F;
-	midi_data->unknown3[1] = 0x64;
-	midi_data->unknown3[2] = 0x00;
-	midi_data->unknown3[3] = 0x10;
-	midi_data->unknown3[4] = 0x4E;
-
+	midi_data->triggerButton = 0x0000;
+	midi_data->gain = 0x7F;
+	midi_data->sampleRate = 0x0064;
+	midi_data->truncate = 0x4E10;
 	if (inData->effectType == 0x01)	// constant
 		midi_data->param2 = 0x0000;
 	else

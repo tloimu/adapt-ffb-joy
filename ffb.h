@@ -247,6 +247,7 @@ typedef struct
 extern volatile TDisabledEffectTypes gDisabledEffects;
 
 void FfbSendSysEx(const uint8_t* midi_data, uint8_t len);
+uint16_t UsbUint16ToMidiUint14_Time(uint16_t inUsbValue);
 uint16_t UsbUint16ToMidiUint14(uint16_t inUsbValue);
 int16_t UsbInt8ToMidiInt14(int8_t inUsbValue);
 uint8_t CalcGain(uint8_t usbValue, uint8_t gain);

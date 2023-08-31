@@ -12,18 +12,19 @@ typedef struct
 	{
 	uint8_t command;	// always 0x23	-- start counting checksum from here
 	uint8_t waveForm;	// 2=sine, 5=Square, 6=RampUp, 7=RampDown, 8=Triange, 0x12=Constant
-	uint8_t unknown1;	// ? always 0x7F
+	uint8_t unknown1;	// Overwrite an allocated effect 
 	uint16_t duration;	// unit=2ms
-	uint16_t unknown2;	// ? always 0x0000
+	uint16_t triggerButton;	// Bitwise buttons 1 to 9 from LSB
 	uint16_t direction;
-	uint8_t	unknown3[5];	// ? always 7f 64 00 10 4e
+	uint8_t gain;
+	uint16_t sampleRate;	//default 0x64 0x00 = 100Hz
+	uint16_t truncate;		//default 0x10 0x4e = 10000 for full waveform
 	uint8_t attackLevel;
 	uint16_t	attackTime;
 	uint8_t		magnitude;
 	uint16_t	fadeTime;
 	uint8_t	fadeLevel;
-	uint8_t	waveLength;	// 0x6F..0x01 => 1/Hz
-	uint8_t unknown5;	// ? always 0x00
+	uint16_t frequency;	// unit=Hz; 1 for constant and ramps
 	uint16_t param1;	// Varies by effect type; Constant: positive=7f 00, negative=01 01, Other effects: 01 01
 	uint16_t param2;	// Varies by effect type; Constant: 00 00, Other effects 01 01
 	} FFP_MIDI_Effect_Basic;
@@ -32,9 +33,9 @@ typedef struct
 	{
 	uint8_t command;	// always 0x23	-- start counting checksum from here
 	uint8_t waveForm;	// 0xd=Spring, 0x0e=Damper, 0xf=Inertia
-	uint8_t unknown1;	// ? always 0x7F
+	uint8_t unknown1;	// Overwrite an allocated effect
 	uint16_t duration;	// unit=2ms
-	uint16_t unknown2;	// ? always 0x0000
+	uint16_t triggerButton;	// Bitwise buttons 1 to 9 from LSB
 	uint16_t coeffAxis0;
 	uint16_t coeffAxis1;
 	uint16_t offsetAxis0;
@@ -45,9 +46,9 @@ typedef struct
 	{
 	uint8_t command;	// always 0x23	-- start counting checksum from here
 	uint8_t waveForm;	// 0x10=Friction
-	uint8_t unknown1;	// ? always 0x7F
+	uint8_t unknown1;	// Overwrite an allocated effect
 	uint16_t duration;	// unit=2ms
-	uint16_t unknown2;	// ? always 0x0000
+	uint16_t triggerButton;	// Bitwise buttons 1 to 9 from LSB
 	uint16_t coeffAxis0;
 	uint16_t coeffAxis1;
 	} FFP_MIDI_Effect_Friction;

@@ -190,13 +190,21 @@ void FfbSendSysEx(const uint8_t* midi_data, uint8_t len)
 	FfbSendData(&mark, 1);
 }
 
+uint16_t UsbUint16ToMidiUint14_Time(uint16_t inUsbValue)
+	{ //Only use for Time conversion from ms. Includes /2 as MIDI duration is in units of 2ms
+	if (inUsbValue == 0xFFFF)
+		return 0x0000;
+
+	return (inUsbValue & 0x7F00) + ((inUsbValue & 0x00FF) >> 1);
+	}
+	
 uint16_t UsbUint16ToMidiUint14(uint16_t inUsbValue)
 	{
 	if (inUsbValue == 0xFFFF)
 		return 0x0000;
 
-	return (inUsbValue & 0x7F00) + ((inUsbValue & 0x00FF) >> 1);	// loss of the MSB-bit!
-	}
+	return ((inUsbValue << 1) & 0x7F00) + ((inUsbValue & 0x007F));
+	}	
 
 int16_t UsbInt8ToMidiInt14(int8_t inUsbValue)
 	{
@@ -380,7 +388,7 @@ void FfbHandle_SetEffect(USB_FFBReport_SetEffect_Output_Data_t *data)
 	if (data->duration == USB_DURATION_INFINITE) {
 		midi_data->duration = MIDI_DURATION_INFINITE;
 	} else {
-		midi_data->duration = UsbUint16ToMidiUint14(data->duration); // MIDI unit is 2ms
+		midi_data->duration = UsbUint16ToMidiUint14_Time(data->duration); // MIDI unit is 2ms
 	}
 	effect->usb_duration = data->duration;	// store for later calculation of <fadeTime>
 
