@@ -61,7 +61,9 @@ void FfbproStartEffect(uint8_t id);
 void FfbproStopEffect(uint8_t id);
 void FfbproFreeEffect(uint8_t id);
 
-void FfbproModifyDuration(uint8_t effectId, uint16_t duration);
+void FfbproSendModify(uint8_t effectId, uint8_t address, uint16_t value);
+
+void FfbproModifyDuration(uint8_t effectState, uint16_t* midi_data_param, uint8_t effectId, uint16_t duration);
 
 void FfbproSetEnvelope(USB_FFBReport_SetEnvelope_Output_Data_t* data, volatile TEffectState* effect);
 void FfbproSetCondition(USB_FFBReport_SetCondition_Output_Data_t* data, volatile TEffectState* effect);
@@ -72,5 +74,25 @@ int  FfbproSetEffect(USB_FFBReport_SetEffect_Output_Data_t *data, volatile TEffe
 void FfbproCreateNewEffect(USB_FFBReport_CreateNewEffect_Feature_Data_t* inData, volatile TEffectState* effect);
 
 uint8_t FfbproUsbToMidiEffectType(uint8_t usb_effect_type);
+
+#define FFP_MIDI_MODIFY_DURATION		0x40
+#define FFP_MIDI_MODIFY_TRIGGERBUTTON	0x44
+#define FFP_MIDI_MODIFY_DIRECTION		0x48
+#define FFP_MIDI_MODIFY_GAIN			0x4C
+#define FFP_MIDI_MODIFY_SAMPLERATE		0x50
+#define FFP_MIDI_MODIFY_ATTACK			0x64
+#define FFP_MIDI_MODIFY_ATTACKTIME		0x5C
+#define FFP_MIDI_MODIFY_MAGNITUDE		0x68 //byte 22 i.e. sustain
+#define FFP_MIDI_MODIFY_FADETIME		0x60
+#define FFP_MIDI_MODIFY_FADE			0x6C
+#define FFP_MIDI_MODIFY_FREQUENCY		0x70
+#define FFP_MIDI_MODIFY_PARAM1			0x74
+#define FFP_MIDI_MODIFY_PARAM2			0x78
+#define FFP_MIDI_MODIFY_COEFFAXIS0		0x48 //roll
+#define FFP_MIDI_MODIFY_COEFFAXIS1		0x4C //pitch
+#define FFP_MIDI_MODIFY_OFFSETAXIS0		0x50 //roll
+#define FFP_MIDI_MODIFY_OFFSETAXIS1		0x54 //pitch
+
+#define FFP_MIDI_MODIFY_DEVICEGAIN		0x7C
 
 #endif // _FFB_PRO_

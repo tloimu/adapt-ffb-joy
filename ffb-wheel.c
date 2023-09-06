@@ -140,7 +140,7 @@ void FfbwheelFreeEffect(uint8_t effectId)
 
 // modify operations ---------------------------------------------------------
 
-static void FfbwheelSendModify(uint8_t effectId, uint8_t address, uint16_t value)
+void FfbwheelSendModify(uint8_t effectId, uint8_t address, uint16_t value)
 {
 	cmd_f1_t op;
 
@@ -156,9 +156,10 @@ static void FfbwheelSendModify(uint8_t effectId, uint8_t address, uint16_t value
 	FfbSendData(d, sizeof(op));
 }
 
-void FfbwheelModifyDuration(uint8_t effectId, uint16_t duration)
+void FfbwheelModifyDuration(uint8_t effectState, uint16_t* midi_data_param, uint8_t effectId, uint16_t duration)
 {
-	FfbwheelSendModify(effectId, 0x00, duration);
+	//FfbwheelSendModify(effectId, 0x00, duration);
+	FfbSetParamMidi_14bit(effectState, midi_data_param, effectId, 0x00, duration); //Changed for compatibility but behaviour not checked for wheel
 }
 
 void FfbwheelSetEnvelope(

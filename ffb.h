@@ -247,6 +247,8 @@ typedef struct
 extern volatile TDisabledEffectTypes gDisabledEffects;
 
 void FfbSendSysEx(const uint8_t* midi_data, uint8_t len);
+uint8_t FfbSetParamMidi_14bit(uint8_t effectState, volatile uint16_t *midi_data_param, uint8_t effectId, uint8_t address, uint16_t value);
+uint8_t FfbSetParamMidi_7bit(uint8_t effectState, volatile uint8_t *midi_data_param, uint8_t effectId, uint8_t address, uint8_t value);
 uint16_t UsbUint16ToMidiUint14_Time(uint16_t inUsbValue);
 uint16_t UsbUint16ToMidiUint14(uint16_t inUsbValue);
 int16_t UsbInt8ToMidiInt14(int8_t inUsbValue);
@@ -264,8 +266,8 @@ void FfbEnableEffectId(uint8_t inId, uint8_t inEnable);
 #define MEffectState_Playing		0x02
 #define MEffectState_SentToJoystick	0x04
 
-#define USB_DURATION_INFINITE	0x7FFF
-#define MIDI_DURATION_INFINITE	0
+#define USB_DURATION_INFINITE	0xFFFF
+#define MIDI_DURATION_INFINITE	0x0000
 
 #define USB_EFFECT_CONSTANT		0x01
 #define USB_EFFECT_RAMP			0x02
@@ -310,7 +312,8 @@ typedef struct
 	void (*StopEffect)(uint8_t eid);
 	void (*FreeEffect)(uint8_t eid);
 	
-	void (*ModifyDuration)(uint8_t effectId, uint16_t duration);
+	void (*SendModify)(uint8_t effectId, uint8_t address, uint16_t value);	
+	void (*ModifyDuration)(uint8_t effectState, uint16_t* midi_data_param, uint8_t effectId, uint16_t duration);
 	
 	void (*CreateNewEffect)(USB_FFBReport_CreateNewEffect_Feature_Data_t* inData, volatile TEffectState* effect);
 	void (*SetEnvelope)(USB_FFBReport_SetEnvelope_Output_Data_t* data, volatile TEffectState* effect);
@@ -321,4 +324,4 @@ typedef struct
 	int  (*SetEffect)(USB_FFBReport_SetEffect_Output_Data_t* data, volatile TEffectState* effect);
 	} FFB_Driver;
 
-#endif // _FFB_PRO_
+#endif // _FFB_

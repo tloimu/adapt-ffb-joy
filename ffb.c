@@ -59,6 +59,7 @@ const FFB_Driver ffb_drivers[2] =
 		.SetRampForce = FfbproSetRampForce,
 		.SetEffect = FfbproSetEffect,
 		.ModifyDuration = FfbproModifyDuration,
+		.SendModify = FfbproSendModify,
 		},
 		{
 		.EnableInterrupts = FfbwheelEnableInterrupts,
@@ -76,6 +77,7 @@ const FFB_Driver ffb_drivers[2] =
 		.SetRampForce = FfbwheelSetRampForce,
 		.SetEffect = FfbwheelSetEffect,
 		.ModifyDuration = FfbwheelModifyDuration,
+		.SendModify = FfbwheelSendModify,
 		}
 	};
 
@@ -190,8 +192,34 @@ void FfbSendSysEx(const uint8_t* midi_data, uint8_t len)
 	FfbSendData(&mark, 1);
 }
 
+uint8_t FfbSetParamMidi_14bit(uint8_t effectState, volatile uint16_t* midi_data_param, uint8_t effectId, uint8_t address, uint16_t value)
+	{ // why does midi data need to be volatile? What else can change it?? Are the USB FFB messages not processed sequentially?
+	if (value == *midi_data_param)
+		return 0;
+	else
+		{
+		*midi_data_param = value;
+		if (effectState & MEffectState_SentToJoystick)
+			ffb->SendModify(effectId, address, value);
+		return 1;
+		}
+	}
+	
+uint8_t FfbSetParamMidi_7bit(uint8_t effectState, volatile uint8_t* midi_data_param, uint8_t effectId, uint8_t address, uint8_t value)
+	{ // why does midi data need to be volatile? What else can change it?? Are the USB FFB messages not processed sequentially?
+	if (value == *midi_data_param)
+		return 0;
+	else
+		{
+		*midi_data_param = value;
+		if (effectState & MEffectState_SentToJoystick)
+			ffb->SendModify(effectId, address, value);
+		return 1;
+		}
+	}	
+
 uint16_t UsbUint16ToMidiUint14_Time(uint16_t inUsbValue)
-	{ //Only use for Time conversion from ms. Includes /2 as MIDI duration is in units of 2ms
+	{ //Only use for Time conversion from ms. Includes /2 as MIDI duration is in units of 2ms and USB 1ms
 	if (inUsbValue == 0xFFFF)
 		return 0x0000;
 
@@ -382,18 +410,19 @@ void FfbHandle_SetEffect(USB_FFBReport_SetEffect_Output_Data_t *data)
 			}
 		FlushDebugBuffer();
 		}
-
+	
+	uint16_t midi_duration;
+	
 	midi_data_common_t* midi_data = (midi_data_common_t*)effect->data;
 	
 	if (data->duration == USB_DURATION_INFINITE) {
-		midi_data->duration = MIDI_DURATION_INFINITE;
+		midi_duration = MIDI_DURATION_INFINITE;
 	} else {
-		midi_data->duration = UsbUint16ToMidiUint14_Time(data->duration); // MIDI unit is 2ms
+		midi_duration = UsbUint16ToMidiUint14_Time(data->duration); // MIDI unit is 2ms
 	}
 	effect->usb_duration = data->duration;	// store for later calculation of <fadeTime>
-
-	if (effect->state & MEffectState_SentToJoystick)
-		ffb->ModifyDuration(data->effectBlockIndex, midi_data->duration);
+	
+	ffb->ModifyDuration(effect->state, &(midi_data->duration), data->effectBlockIndex, midi_duration);
 
 	uint8_t midi_data_len = ffb->SetEffect((USB_FFBReport_SetEffect_Output_Data_t *) data, effect);
 	

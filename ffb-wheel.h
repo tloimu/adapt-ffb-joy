@@ -105,7 +105,9 @@ void FfbwheelStartEffect(uint8_t effectId);
 void FfbwheelStopEffect(uint8_t effectId);
 void FfbwheelFreeEffect(uint8_t effectId);
 
-void FfbwheelModifyDuration(uint8_t effectId, uint16_t duration);
+void FfbwheelSendModify(uint8_t effectId, uint8_t address, uint16_t value);
+
+void FfbwheelModifyDuration(uint8_t effectState, uint16_t* midi_data_param, uint8_t effectId, uint16_t duration);
 
 void FfbwheelSetEnvelope(USB_FFBReport_SetEnvelope_Output_Data_t* data, volatile TEffectState* e);
 void FfbwheelSetCondition(USB_FFBReport_SetCondition_Output_Data_t* data, volatile TEffectState* e);
