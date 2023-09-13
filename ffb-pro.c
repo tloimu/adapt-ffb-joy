@@ -287,9 +287,9 @@ void FfbproSetEnvelope(
 	FfbSetParamMidi_14bit(effect->state, &(midi_data->attackTime), eid, 
 							FFP_MIDI_MODIFY_ATTACKTIME, UsbUint16ToMidiUint14_Time(data->attackTime));
 	FfbSetParamMidi_7bit(effect->state, &(midi_data->fadeLevel), eid, 
-							FFP_MIDI_MODIFY_FADE, CalcGain(data->fadeLevel, effect->usb_gain));
+							FFP_MIDI_MODIFY_FADE, ((data->fadeLevel) >> 1) & 0x7f);
 	FfbSetParamMidi_7bit(effect->state, &(midi_data->attackLevel), eid, 
-							FFP_MIDI_MODIFY_ATTACK, CalcGain(data->attackLevel, effect->usb_gain));
+							FFP_MIDI_MODIFY_ATTACK, ((data->attackLevel) >> 1) & 0x7f);
 }
 
 void FfbproSetCondition(
@@ -429,7 +429,7 @@ void FfbproSetPeriodic(
 		}
 
 		// Calculate min-max from magnitude and offset
-		uint8_t magnitude = CalcGain(data->magnitude, effect->usb_gain);	// already at MIDI-level i.e. 1/2 of USB level!
+		uint8_t magnitude = data->magnitude / 2;
 		
 		FfbSetParamMidi_14bit(effect->state, &(midi_data->param1), eid, 
 								FFP_MIDI_MODIFY_PARAM1, UsbInt8ToMidiInt14(data->offset / 2 + magnitude)); // max	
@@ -492,10 +492,10 @@ void FfbproSetConstantForce(
 	uint16_t midi_param1;
 
 	if (data->magnitude >= 0) {
-		midi_magnitude = CalcGain(data->magnitude, effect->usb_gain);
+		midi_magnitude = (data->magnitude >> 1) & 0x7f;
 		midi_param1 = 0x007f;
 	} else {
-		midi_magnitude = CalcGain(-(data->magnitude+1), effect->usb_gain);
+		midi_magnitude = (( -(data->magnitude + 1)) >> 1) & 0x7f;
 		midi_param1 = 0x0101;
 	}
 	
@@ -606,7 +606,10 @@ int FfbproSetEffect(
 				uint16_t param2;	// Varies by effect type; Constant: 00 00, Other effects 01 01
 
 			*/
-
+			// Effect Gain
+			FfbSetParamMidi_7bit(effect->state, &(midi_data->gain), eid, 
+								FFP_MIDI_MODIFY_GAIN, (data->gain >> 1) & 0x7f);			
+			
 			// Convert direction
 			uint16_t usbdir = data->directionX;
 			usbdir = usbdir * 2;
@@ -631,33 +634,7 @@ int FfbproSetEffect(
 			}			
 			FfbSetParamMidi_14bit(effect->state, &(midi_data->fadeTime), eid, 
 								FFP_MIDI_MODIFY_FADETIME, midi_fadeTime);
-								
-			// Gain and its effects (magnitude and envelope levels)
-			bool gain_changed = (effect->usb_gain != data->gain);
-			if (gain_changed) {
-//				LogTextP(PSTR("  New gain:"));
-//				LogBinary(&data->gain, 1);
-
-				effect->usb_gain = data->gain;
-				FfbSetParamMidi_7bit(effect->state, &(midi_data->fadeLevel), eid, 
-									FFP_MIDI_MODIFY_FADE, CalcGain(effect->usb_fadeLevel, data->gain));
-				FfbSetParamMidi_7bit(effect->state, &(midi_data->attackLevel), eid, 
-									FFP_MIDI_MODIFY_ATTACK, CalcGain(effect->usb_attackLevel, data->gain));
-
-
-				if (is_periodic) {
-					// Calculate min-max from magnitude and offset, since magnitude may be affected by gain we must calc them here too for periodic effects
-					uint8_t magnitude = CalcGain(effect->usb_magnitude, effect->usb_gain);	// already at MIDI-level i.e. 1/2 of USB level!
-					FfbSetParamMidi_14bit(effect->state, &(midi_data->param1), eid, 
-										FFP_MIDI_MODIFY_PARAM1, UsbInt8ToMidiInt14(effect->usb_offset + magnitude)); // max	
-					FfbSetParamMidi_14bit(effect->state, &(midi_data->param2), eid, 
-										FFP_MIDI_MODIFY_PARAM2, UsbInt8ToMidiInt14(effect->usb_offset - magnitude)); // min
-				} else {
-					FfbSetParamMidi_7bit(effect->state, &(midi_data->magnitude), eid, 
-										FFP_MIDI_MODIFY_MAGNITUDE, CalcGain(effect->usb_magnitude, data->gain));
-				}
-			}
-
+						
 		}
 		break;
 	
@@ -734,12 +711,12 @@ void FfbproCreateNewEffect(
 	midi_data->attackTime = 0x0000;
 	midi_data->fadeLevel = 0x00;
 	midi_data->fadeTime = 0x0000;
+	midi_data->gain = 0x7F;
 	
 	// Constants
 	midi_data->command = 0x23;
 	midi_data->unknown1 = 0x7F;
-	midi_data->triggerButton = 0x0000;
-	midi_data->gain = 0x7F;
+	midi_data->triggerButton = 0x0000;	
 	midi_data->sampleRate = 0x0064;
 	midi_data->truncate = 0x4E10;
 	if (inData->effectType == 0x01)	// constant
