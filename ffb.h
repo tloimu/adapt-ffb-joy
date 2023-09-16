@@ -269,6 +269,8 @@ void FfbEnableEffectId(uint8_t inId, uint8_t inEnable);
 #define USB_DURATION_INFINITE	0xFFFF
 #define MIDI_DURATION_INFINITE	0x0000
 
+#define USB_TRIGGERBUTTON_NULL	0xFF
+
 #define USB_EFFECT_CONSTANT		0x01
 #define USB_EFFECT_RAMP			0x02
 #define USB_EFFECT_SQUARE 		0x03

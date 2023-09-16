@@ -572,6 +572,14 @@ int FfbproSetEffect(
 	volatile FFP_MIDI_Effect_Basic *midi_data = (volatile FFP_MIDI_Effect_Basic *)&effect->data;
 	uint8_t midi_data_len = sizeof(FFP_MIDI_Effect_Basic); 	// default MIDI data size
 	bool is_periodic = false;
+	
+	// Data applying to all effects
+	uint16_t buttonBits = 0;
+	if (data->triggerButton != USB_TRIGGERBUTTON_NULL)		
+		buttonBits = (1 << data->triggerButton);
+	//Buttons 1-9 from LSB
+	FfbSetParamMidi_14bit(effect->state, &(midi_data->triggerButton), eid, 
+							FFP_MIDI_MODIFY_TRIGGERBUTTON, (buttonBits & 0x7F) + ( (buttonBits & 0x0180) << 1 ));	
 
 	// Fill in the effect type specific data
 	switch (data->effectType)
