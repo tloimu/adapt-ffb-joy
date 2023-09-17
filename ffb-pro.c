@@ -223,6 +223,18 @@ void FfbproModifyDuration(uint8_t effectState, uint16_t* midi_data_param, uint8_
 	//FfbproSendModify(effectId, 0x40, duration);
 }
 
+uint16_t FfbproConvertDirection(uint8_t usbdir, uint8_t reciprocal)
+{
+	//Convert from USB 0..179 i.e. unit 2deg to MIDI uint_14 0..359 unit deg
+	//Take reciprocal direction if arg not 0
+	uint16_t direction = usbdir * 2;
+	
+	if (reciprocal)
+		direction = (direction + 180) % 360;
+	
+	return (direction & 0x7F) + ( (direction & 0x0180) << 1 );
+}
+
 void FfbproSetEnvelope(
 	USB_FFBReport_SetEnvelope_Output_Data_t* data,
 	volatile TEffectState* effect)
@@ -407,8 +419,6 @@ void FfbproSetPeriodic(
 	volatile FFP_MIDI_Effect_Basic *midi_data = (volatile FFP_MIDI_Effect_Basic *)&effect->data;
 
 	uint16_t midi_param1 = 0x007f, midi_param2 = 0x0101, midi_frequency = 0x0001;
-	
-	effect->usb_magnitude = data->magnitude;
 
 	// Calculate frequency (in MIDI it is in units of Hz and can have value from 1 to 169Hz)
 	if (data->period <= 5)
@@ -489,20 +499,22 @@ void FfbproSetConstantForce(
 	effect->usb_magnitude = data->magnitude;
 
 	uint8_t midi_magnitude;
-	uint16_t midi_param1;
 
 	if (data->magnitude >= 0) {
 		midi_magnitude = (data->magnitude >> 1) & 0x7f;
-		midi_param1 = 0x007f;
+
 	} else {
 		midi_magnitude = (( -(data->magnitude + 1)) >> 1) & 0x7f;
-		midi_param1 = 0x0101;
+
 	}
 	
 	FfbSetParamMidi_7bit(effect->state, &(midi_data->magnitude), eid, 
 						FFP_MIDI_MODIFY_MAGNITUDE, midi_magnitude);
-	FfbSetParamMidi_14bit(effect->state, &(midi_data->param1), eid, 
-						FFP_MIDI_MODIFY_PARAM1, midi_param1);						
+	FfbSetParamMidi_14bit(effect->state, &(midi_data->direction), eid, 
+						FFP_MIDI_MODIFY_DIRECTION, FfbproConvertDirection(effect->usb_direction, (data->magnitude < 0))); 
+							//reciprocal direction if -ve
+						
+	midi_data->param1 = 0x007F; // never again modified
 	midi_data->param2 = 0x0000; // never again modified 
 }
 
@@ -619,10 +631,11 @@ int FfbproSetEffect(
 								FFP_MIDI_MODIFY_GAIN, (data->gain >> 1) & 0x7f);			
 			
 			// Convert direction
-			uint16_t usbdir = data->directionX;
-			usbdir = usbdir * 2;
+			effect->usb_direction = data->directionX;
 			FfbSetParamMidi_14bit(effect->state, &(midi_data->direction), eid, 
-								FFP_MIDI_MODIFY_DIRECTION, (usbdir & 0x7F) + ( (usbdir & 0x0180) << 1 ));
+								FFP_MIDI_MODIFY_DIRECTION, FfbproConvertDirection(data->directionX, (effect->usb_magnitude < 0)));
+				//reciprocal only if -ve constant force
+			
 			
 			// Recalculate fadeTime for MIDI since change to duration changes the fadeTime too
 			uint16_t midi_fadeTime;

@@ -361,6 +361,8 @@ void FfbOnCreateNewEffect(USB_FFBReport_CreateNewEffect_Feature_Data_t* inData, 
 		effect->usb_offset = 0;
 		effect->usb_attackLevel = 0xFF;
 		effect->usb_fadeLevel = 0xFF;
+		effect->usb_magnitude = 0;
+		effect->usb_direction = 0;
 
 		((midi_data_common_t*)effect->data)->waveForm = ffb->UsbToMidiEffectType(inData->effectType - 1);
 		
