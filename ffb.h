@@ -297,8 +297,8 @@ typedef struct {
 typedef struct {
 	uint8_t state;	// see constants <MEffectState_*>
 	uint16_t usb_duration, usb_fadeTime;	// used to calculate fadeTime to MIDI, since in USB it is given as time difference from the end while in MIDI it is given as time from start
-	// These are used to calculate effects of USB gain to MIDI data
-	uint8_t usb_gain, usb_offset, usb_attackLevel, usb_fadeLevel, usb_direction;
+	// These are used to calculate effect levels and signs
+	uint8_t usb_gain, usb_attackLevel, usb_fadeLevel, usb_direction, invert, range;
 	int16_t usb_magnitude; //Signed for Constant Force use only
 	volatile uint8_t	data[MAX_MIDI_MSG_LEN];
 	} TEffectState;

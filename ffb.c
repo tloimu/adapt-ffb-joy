@@ -358,11 +358,12 @@ void FfbOnCreateNewEffect(USB_FFBReport_CreateNewEffect_Feature_Data_t* inData, 
 		effect->usb_duration = USB_DURATION_INFINITE;
 		effect->usb_fadeTime = USB_DURATION_INFINITE;
 		effect->usb_gain = 0xFF;
-		effect->usb_offset = 0;
 		effect->usb_attackLevel = 0xFF;
 		effect->usb_fadeLevel = 0xFF;
 		effect->usb_magnitude = 0;
 		effect->usb_direction = 0;
+		effect->invert = 0;
+		effect->range = 255;
 
 		((midi_data_common_t*)effect->data)->waveForm = ffb->UsbToMidiEffectType(inData->effectType - 1);
 		

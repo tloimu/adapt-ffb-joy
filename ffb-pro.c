@@ -223,7 +223,7 @@ void FfbproModifyDuration(uint8_t effectState, uint16_t* midi_data_param, uint8_
 	//FfbproSendModify(effectId, 0x40, duration);
 }
 
-uint16_t FfbproConvertDirection(uint8_t usbdir, uint8_t reciprocal)
+static uint16_t FfbproConvertDirection(uint8_t usbdir, uint8_t reciprocal)
 {
 	//Convert from USB 0..179 i.e. unit 2deg to MIDI uint_14 0..359 unit deg
 	//Take reciprocal direction if arg not 0
@@ -234,6 +234,51 @@ uint16_t FfbproConvertDirection(uint8_t usbdir, uint8_t reciprocal)
 	
 	return (direction & 0x7F) + ( (direction & 0x0180) << 1 );
 }
+
+static uint8_t FfbproModifyParamRange(volatile TEffectState* effect, uint8_t effectId, int8_t offset)
+{
+
+	volatile FFP_MIDI_Effect_Basic *midi_data = (volatile FFP_MIDI_Effect_Basic *)&effect->data;
+	
+	int8_t param1, param2;
+	uint8_t range;
+	if (offset >= 0) {
+		param1 = 127;
+		param2 = -128 + offset * 2;
+	} else {
+		param1 = 127 + (offset + 1) * 2; // avoid overflow, but offset -1 has same effect as 0
+		param2 = -128;
+	} // Note range of 0 should not occur - this would cause /div0 in FFbproCalcLevel
+	range = param1 - param2;
+	
+	if (effect->invert) //param1 is always set > param2 by MS drivers? Possible this inversion could cause some unexpected behaviour 
+	{
+		param2 = param1;
+		param1 = param2 - range;
+	}
+	
+	FfbSetParamMidi_14bit(effect->state, &(midi_data->param1), effectId, 
+							FFP_MIDI_MODIFY_PARAM1, UsbInt8ToMidiInt14(param1));	
+	FfbSetParamMidi_14bit(effect->state, &(midi_data->param2), effectId, 
+							FFP_MIDI_MODIFY_PARAM2, UsbInt8ToMidiInt14(param2));	
+		
+	return range;
+}
+
+static uint8_t FfbproCalcLevel(uint8_t range, uint8_t usb_level)
+{
+	// Initial levels assume full range - but range is reduced by application of offset
+	// So compensate by increasing levels (attack, magnitude or fade)
+	
+	uint16_t v = ((usb_level * 255) / range) >> 1;
+	
+	if (v > 255) {
+		return 0x7f; //saturated
+	} else {
+		return (v >> 1) & 0x7f;
+	}
+}
+
 
 void FfbproSetEnvelope(
 	USB_FFBReport_SetEnvelope_Output_Data_t* data,
@@ -299,9 +344,9 @@ void FfbproSetEnvelope(
 	FfbSetParamMidi_14bit(effect->state, &(midi_data->attackTime), eid, 
 							FFP_MIDI_MODIFY_ATTACKTIME, UsbUint16ToMidiUint14_Time(data->attackTime));
 	FfbSetParamMidi_7bit(effect->state, &(midi_data->fadeLevel), eid, 
-							FFP_MIDI_MODIFY_FADE, ((data->fadeLevel) >> 1) & 0x7f);
+							FFP_MIDI_MODIFY_FADE, FfbproCalcLevel(effect->range, data->fadeLevel));
 	FfbSetParamMidi_7bit(effect->state, &(midi_data->attackLevel), eid, 
-							FFP_MIDI_MODIFY_ATTACK, ((data->attackLevel) >> 1) & 0x7f);
+							FFP_MIDI_MODIFY_ATTACK, FfbproCalcLevel(effect->range, data->attackLevel));
 }
 
 void FfbproSetCondition(
@@ -401,7 +446,6 @@ void FfbproSetPeriodic(
 
 	MIDI effect data:
 
-		Offset values other than zero do not work and thus it is ignored on FFP
 	*/
 	
 	if (DoDebug(DEBUG_DETAIL))
@@ -418,7 +462,7 @@ void FfbproSetPeriodic(
 	
 	volatile FFP_MIDI_Effect_Basic *midi_data = (volatile FFP_MIDI_Effect_Basic *)&effect->data;
 
-	uint16_t midi_param1 = 0x007f, midi_param2 = 0x0101, midi_frequency = 0x0001;
+	uint16_t midi_frequency = 0x0001;
 
 	// Calculate frequency (in MIDI it is in units of Hz and can have value from 1 to 169Hz)
 	if (data->period <= 5)
@@ -429,28 +473,69 @@ void FfbproSetPeriodic(
 	FfbSetParamMidi_14bit(effect->state, &(midi_data->frequency), eid, 
 							FFP_MIDI_MODIFY_FREQUENCY, midi_frequency);
 							
-	// Check phase if relevant (+90 phase for sine makes it a cosine)
-	if (midi_data->waveForm == 2 || midi_data->waveForm == 3) // sine
+	// Check phase and set closest waveform and sign only before effect is sent
+	//   - don't allow changes on the fly - even where possible this would result in harsh steps
+	if (!(effect->state & MEffectState_SentToJoystick))
 	{
-		if (data->phase >= 32 && data->phase <= 224) {
-			midi_data->waveForm = 3;	// cosine. Can't be modified
+		if (midi_data->waveForm == 2 || midi_data->waveForm == 3) // sine or cosine
+		{
+			switch (data->phase / 32) //USB 255 = 2*pi or 360deg so 32 is 45deg
+			{
+				case 0: //0-44deg
+				case 7:
+				{
+					midi_data->waveForm = 2;
+					effect->invert = 0;
+					break;
+				}
+				case 1:
+				case 2:
+				{
+					midi_data->waveForm = 3;
+					effect->invert = 0;
+					break;
+				}
+				case 3:
+				case 4:
+				{
+					midi_data->waveForm = 2;
+					effect->invert = 1; //i.e. -sine
+					break;
+				}	
+				case 5:
+				case 6:
+				{
+					midi_data->waveForm = 3;
+					effect->invert = 1;
+					break;
+				}
+			}
 		} else {
-			midi_data->waveForm = 2;	// sine. Can't be modified
+			if ((data->phase > 64) && (data->phase < 192)) { //for square, tri, sawtooth
+				effect->invert = 1;
+			} else {
+				effect->invert = 0;
+			}
 		}
-
-		// Calculate min-max from magnitude and offset
-		uint8_t magnitude = data->magnitude / 2;
-		
-		FfbSetParamMidi_14bit(effect->state, &(midi_data->param1), eid, 
-								FFP_MIDI_MODIFY_PARAM1, UsbInt8ToMidiInt14(data->offset / 2 + magnitude)); // max	
-		FfbSetParamMidi_14bit(effect->state, &(midi_data->param2), eid, 
-								FFP_MIDI_MODIFY_PARAM2, UsbInt8ToMidiInt14(data->offset / 2 - magnitude)); // min											
-	} else {
-		midi_data->param1 = midi_param1; //never again changed
-		midi_data->param2 = midi_param2; //never again changed
 	}
 	
-
+	// Calculate min max and available range from offset. Invert if needed.
+	uint8_t range = FfbproModifyParamRange(effect, eid, data->offset);
+	
+	// Calculate magnitude relative to available range
+	FfbSetParamMidi_7bit(effect->state, &(midi_data->magnitude), eid, 
+						FFP_MIDI_MODIFY_MAGNITUDE, FfbproCalcLevel(range, data->magnitude));
+	
+	// Check whether envelope levels need to be updated too
+	if (range != effect->range)	
+	{	
+		effect->range = range;
+		FfbSetParamMidi_7bit(effect->state, &(midi_data->fadeLevel), eid, 
+								FFP_MIDI_MODIFY_FADE, FfbproCalcLevel(range, effect->usb_fadeLevel));
+		FfbSetParamMidi_7bit(effect->state, &(midi_data->attackLevel), eid, 
+								FFP_MIDI_MODIFY_ATTACK, FfbproCalcLevel(range, effect->usb_attackLevel));		
+	}
+								
 }
 
 void FfbproSetConstantForce(
