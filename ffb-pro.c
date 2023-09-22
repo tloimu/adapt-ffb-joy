@@ -270,7 +270,7 @@ static uint8_t FfbproCalcLevel(uint8_t range, uint8_t usb_level)
 	// Initial levels assume full range - but range is reduced by application of offset
 	// So compensate by increasing levels (attack, magnitude or fade)
 	
-	uint16_t v = ((usb_level * 255) / range) >> 1;
+	uint16_t v = ((usb_level * 255) / range);
 	
 	if (v > 255) {
 		return 0x7f; //saturated
@@ -519,7 +519,7 @@ void FfbproSetPeriodic(
 		}
 	}
 	
-	// Calculate min max and available range from offset. Invert if needed.
+	// Calculate min max and available range from offset. Then Modify. Invert if needed.
 	uint8_t range = FfbproModifyParamRange(effect, eid, data->offset);
 	
 	// Calculate magnitude relative to available range
@@ -619,7 +619,6 @@ void FfbproSetRampForce(
 		FlushDebugBuffer();
 		}
 
-	// FFP supports only ramp up from MIN to MAX and ramp down from MAX to MIN?
 	/*
 	USB effect data:
 		uint8_t	reportId;	// =6
@@ -630,6 +629,39 @@ void FfbproSetRampForce(
 	
 	volatile FFP_MIDI_Effect_Basic *midi_data = (volatile FFP_MIDI_Effect_Basic *)&effect->data;
 
+	// Same approach as periodic waveforms
+	int8_t offset = ((int16_t)data->start + (int16_t)data->end)/2; //Could be done more efficiently without casting
+	uint8_t magnitude;
+	
+	if (data->start > data->end) {
+		effect->invert = 1; //Ramp Down
+		magnitude = data->start - data->end;
+	} else {
+		effect->invert = 0; //Ramp Up
+		magnitude = data->end - data->start;
+	}
+
+
+	// Calculate min max and available range from offset. Then Modify. Invert if needed.
+	uint8_t range = FfbproModifyParamRange(effect, eid, offset);
+	
+	
+	// Calculate magnitude relative to available range
+	FfbSetParamMidi_7bit(effect->state, &(midi_data->magnitude), eid, 
+						FFP_MIDI_MODIFY_MAGNITUDE, FfbproCalcLevel(range, magnitude));
+	
+	// Check whether envelope levels need to be updated too
+	if (range != effect->range)	
+	{	
+		effect->range = range;
+		FfbSetParamMidi_7bit(effect->state, &(midi_data->fadeLevel), eid, 
+								FFP_MIDI_MODIFY_FADE, FfbproCalcLevel(range, effect->usb_fadeLevel));
+		FfbSetParamMidi_7bit(effect->state, &(midi_data->attackLevel), eid, 
+								FFP_MIDI_MODIFY_ATTACK, FfbproCalcLevel(range, effect->usb_attackLevel));		
+	}
+		
+	
+/*
 	uint16_t midi_param1;
 
 	if (data->start < 0)
@@ -642,6 +674,7 @@ void FfbproSetRampForce(
 
 	FfbSetParamMidi_14bit(effect->state, &(midi_data->param2), eid, 
 						FFP_MIDI_MODIFY_PARAM2, UsbInt8ToMidiInt14(data->end));
+						*/
 }
 
 int FfbproSetEffect(
