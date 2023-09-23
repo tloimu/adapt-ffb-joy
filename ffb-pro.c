@@ -270,7 +270,7 @@ static uint8_t FfbproCalcLevel(uint8_t range, uint8_t usb_level)
 	// Initial levels assume full range - but range is reduced by application of offset
 	// So compensate by increasing levels (attack, magnitude or fade)
 	
-	uint16_t v = ((usb_level * 255) / range);
+	uint16_t v = ((uint16_t) usb_level * 255) / range; //explicit cast was necessary here to avoid implicit to int16_t and overflow
 	
 	if (v > 255) {
 		return 0x7f; //saturated
