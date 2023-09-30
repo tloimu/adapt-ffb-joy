@@ -157,8 +157,8 @@ uint8_t FfbproDeviceControl(uint8_t usb_control)
 	USB_DCTRL_CONTINUE			0x06
 	*/
 	const uint8_t usbToMidiControl[] = {
-		0x03, 	// Disable Actuators (time stepping continues in background)
 		0x02, 	// Enable Actuators
+		0x03, 	// Disable Actuators (time stepping continues in background)		
 		0x06, 	// Stop All (including stop auto centre)
 		0x01,	// Reset  (stop all effects; free all effects; reset device gain to max; enable actuators; continue; enable auto spring centre)
 		0x05,	// Pause (time stepping is paused)
