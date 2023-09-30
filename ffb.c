@@ -5,6 +5,7 @@
 
   Copyright 2012  Tero Loimuneva (tloimu [at] gmail [dot] com)
   Copyright 2013  Saku Kekkonen
+  Copyright 2023  Ed Wilkinson  
 
   Permission to use, copy, modify, distribute, and sell this
   software and its documentation for any purpose is hereby granted
@@ -46,7 +47,7 @@ const FFB_Driver ffb_drivers[2] =
 		{
 		.EnableInterrupts = FfbproEnableInterrupts,
 		.GetSysExHeader = FfbproGetSysExHeader,
-		.SetAutoCenter = FfbproSetAutoCenter,
+		.DeviceControl = FfbproDeviceControl,
 		.UsbToMidiEffectType = FfbproUsbToMidiEffectType,
 		.StartEffect = FfbproStartEffect,
 		.StopEffect = FfbproStopEffect,
@@ -59,12 +60,13 @@ const FFB_Driver ffb_drivers[2] =
 		.SetRampForce = FfbproSetRampForce,
 		.SetEffect = FfbproSetEffect,
 		.ModifyDuration = FfbproModifyDuration,
+		.ModifyDeviceGain = FfbproModifyDeviceGain,
 		.SendModify = FfbproSendModify,
 		},
 		{
 		.EnableInterrupts = FfbwheelEnableInterrupts,
 		.GetSysExHeader = FfbwheelGetSysExHeader,
-		.SetAutoCenter = FfbwheelSetAutoCenter,
+		.DeviceControl = FfbwheelDeviceControl,
 		.UsbToMidiEffectType = FfbwheelUsbToMidiEffectType,
 		.StartEffect = FfbwheelStartEffect,
 		.StopEffect = FfbwheelStopEffect,
@@ -77,6 +79,7 @@ const FFB_Driver ffb_drivers[2] =
 		.SetRampForce = FfbwheelSetRampForce,
 		.SetEffect = FfbwheelSetEffect,
 		.ModifyDuration = FfbwheelModifyDuration,
+		.ModifyDeviceGain = FfbwheelModifyDeviceGain,
 		.SendModify = FfbwheelSendModify,
 		}
 	};
@@ -546,11 +549,13 @@ void FfbHandle_BlockFree(USB_FFBReport_BlockFree_Output_Data_t *data)
 	}
 
 void FfbHandle_DeviceControl(USB_FFBReport_DeviceControl_Output_Data_t *data)
-	{
+{
 //	LogTextP(PSTR("Device Control: "));
 
 	uint8_t control = data->control;
 	// 1=Enable Actuators, 2=Disable Actuators, 3=Stop All Effects, 4=Reset, 5=Pause, 6=Continue
+	
+	uint8_t success;
 
 // PID State Report:
 //	uint8_t	reportId;	// =2
@@ -558,69 +563,77 @@ void FfbHandle_DeviceControl(USB_FFBReport_DeviceControl_Output_Data_t *data)
 //	uint8_t	effectBlockIndex;	// Bit7=Effect Playing, Bit0..7=EffectId (1..40)
 
 	pidState.reportId = 2;
-	pidState.status |= 1 << 2;
-	pidState.status |= 1 << 4;
+	pidState.status |= 1 << 2; //Safety Switch: device usable
+	pidState.status |= 1 << 4; //Actuator Power: on
 	pidState.effectBlockIndex = 0;
 
-	if (control == 0x01)
-		{
-		LogTextLf("Disable Actuators");
-		pidState.status = (pidState.status & 0xFE);
-		}
-	else if (control == 0x02)
-		{
-		LogTextLf("Enable Actuators");
-		pidState.status |= 1 << 2;
-		}
-	else if (control == 0x03)
-		{
-		// Stop all effects (e.g. FFB-application to foreground)
-		LogTextLf("Stop All Effects");
+	success = ffb->DeviceControl(control);
 
-		// Disable auto-center spring and stop all effects
-//	???? The below would take too long?
-		ffb->SetAutoCenter(0);
-		pidState.effectBlockIndex = 0;
-		}
-	else if (control == 0x04)
-		{
-		LogTextLf("Reset");
-		// Reset (e.g. FFB-application out of focus)
-		// Enable auto-center spring and stop all effects
-		ffb->SetAutoCenter(1);
-		WaitMs(75);
-		FreeAllEffects();
-		}
-	else if (control == 0x05)
-		{
-		LogTextLf("Pause");
-		}
-	else if (control == 0x06)
-		{
-		LogTextLf("Continue");
-		}
-	else if (control  & (0xFF-0x3F))
-		{
-		LogTextP(PSTR("Other "));
-		LogBinaryLf(&data->control, 1);
-		}
+	switch (control)
+	{
+		case USB_DCTRL_ACTUATORS_DISABLE:
+			LogTextLf("Disable Actuators");
+			if (success)
+				pidState.status &= ~(1 << 1);
+			break;
+		case USB_DCTRL_ACTUATORS_ENABLE:
+			LogTextLf("Enable Actuators");
+			if (success)
+				pidState.status |= (1 << 1);
+			break;
+		case USB_DCTRL_STOPALL:
+			LogTextLf("Stop All Effects");
+			if (success)
+				pidState.effectBlockIndex = 0;
+				//need to update all effect states to not playing? Maybe not needed since adapter doesn't track when effects finish anyway
+			break;
+		case USB_DCTRL_RESET:
+			LogTextLf("Reset");
+			// Reset (e.g. FFB-application out of focus)
+			//Enables auto centre, continues, enables actuators, stop and free all effects, resets device gain (for FFP at least)
+			if (success)
+				{
+				WaitMs(75);
+				FreeAllEffects();
+				pidState.status |= (1 << 1); //actuators
+				pidState.status &= ~1; //continue
+				}
+			break;
+		case USB_DCTRL_PAUSE:		
+			LogTextLf("Pause");
+			if (success)
+				pidState.status |= 1;
+			break;
+		case USB_DCTRL_CONTINUE:
+			LogTextLf("Continue");
+			if (success)
+				pidState.status &= ~1;
+			break;
+		default:
+			if (control  & (0xFF-0x3F))
+				{
+				LogTextP(PSTR("Other "));
+				LogBinaryLf(&data->control, 1);
+				}
+	}	
+	
 
 	// Send response
 	
-	}
+}
 
 
 
-void
-FfbHandle_DeviceGain(USB_FFBReport_DeviceGain_Output_Data_t *data)
+void FfbHandle_DeviceGain(USB_FFBReport_DeviceGain_Output_Data_t *data)
 	{
 	LogTextP(PSTR("Device Gain: "));
 	LogBinaryLf(&data->gain, 1);
+	
+	ffb->ModifyDeviceGain(data->gain);
 	}
 
 
-void
-FfbHandle_SetCustomForce(USB_FFBReport_SetCustomForce_Output_Data_t *data)
+void FfbHandle_SetCustomForce(USB_FFBReport_SetCustomForce_Output_Data_t *data)
 	{
 	LogTextLf("Set Custom Force");
 //	LogBinary(&data, sizeof(USB_FFBReport_SetCustomForce_Output_Data_t));

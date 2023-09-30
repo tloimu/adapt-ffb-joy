@@ -141,27 +141,38 @@ void FfbproEnableInterrupts(void)
 	FfbSendData(startupFfbData_2, sizeof(startupFfbData_2));	// Initialize effects data memory
 	FfbSendData(startupFfbData_3, sizeof(startupFfbData_3));	// Initialize effects data memory
 
-    FfbproSetAutoCenter(0);
+	FfbproDeviceControl(USB_DCTRL_RESET); // Leave auto centre on
 	WaitMs(70);
-	}
-
-void FfbproSetAutoCenter(uint8_t enable)
-{
-	const uint8_t ac_enable[] = {
-		0xc5, 0x01
-	};
 	
-	const uint8_t ac_disable[] = {
-		0xb5, 0x7c, 0x7f,
-		0xa5, 0x7f, 0x00,
-		0xc5, 0x06,
-	};
-
-	FfbSendData(ac_enable, sizeof(ac_enable));
-	if (!enable) {
-		WaitMs(70);
-		FfbSendData(ac_disable, sizeof(ac_disable));
 	}
+
+uint8_t FfbproDeviceControl(uint8_t usb_control)
+{
+	/*
+	USB_DCTRL_ACTUATORS_DISABLE	0x01
+	USB_DCTRL_ACTUATORS_ENABLE	0x02 
+	USB_DCTRL_STOPALL			0x03 
+	USB_DCTRL_RESET				0x04
+	USB_DCTRL_PAUSE				0x05
+	USB_DCTRL_CONTINUE			0x06
+	*/
+	const uint8_t usbToMidiControl[] = {
+		0x03, 	// Disable Actuators (time stepping continues in background)
+		0x02, 	// Enable Actuators
+		0x06, 	// Stop All (including stop auto centre)
+		0x01,	// Reset  (stop all effects; free all effects; reset device gain to max; enable actuators; continue; enable auto spring centre)
+		0x05,	// Pause (time stepping is paused)
+		0x04,	// Continue
+	};	
+	
+	if (usb_control < 1 || usb_control > 6)
+		return 0; //not supported
+	
+	uint8_t command[2] = {0xc5};
+	command[1] = usbToMidiControl[usb_control-1];
+	FfbSendData(command, sizeof(command));
+	//Is a wait needed here?
+	return 1; //supported command
 }
 
 const uint8_t* FfbproGetSysExHeader(uint8_t* hdr_len)
@@ -221,6 +232,11 @@ void FfbproModifyDuration(uint8_t effectState, uint16_t* midi_data_param, uint8_
 	FfbSetParamMidi_14bit(effectState, midi_data_param, effectId, 
 							FFP_MIDI_MODIFY_DURATION, duration);
 	//FfbproSendModify(effectId, 0x40, duration);
+}
+
+void FfbproModifyDeviceGain(uint8_t gain)
+{
+	FfbproSendModify(0x7f, FFP_MIDI_MODIFY_DEVICEGAIN, (gain >> 1) & 0x7f);
 }
 
 static uint16_t FfbproConvertDirection(uint8_t usbdir, uint8_t reciprocal)

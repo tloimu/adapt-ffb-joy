@@ -74,27 +74,34 @@ void FfbwheelEnableInterrupts(void)
 
 	FfbSendData(startupFfbWheelData_0, sizeof(startupFfbWheelData_0));
 	FfbSendData(startupFfbWheelData_1, sizeof(startupFfbWheelData_1));
-	FfbwheelSetAutoCenter(0);
+	FfbwheelDeviceControl(USB_DCTRL_RESET); // Leave auto centre on
 	
 	WaitMs(100);
 	}
 
-void FfbwheelSetAutoCenter(uint8_t enable)
-{
-	const uint8_t ac_enable[] = {
-		0xf3, 0x1d
-	};
+uint8_t FfbwheelDeviceControl(uint8_t usb_control)
+{ // CHANGED FOR COMPATIBILITY - NOT TESTED FOR WHEEL
+	/*
+	USB_DCTRL_ACTUATORS_DISABLE	0x01
+	USB_DCTRL_ACTUATORS_ENABLE	0x02 
+	USB_DCTRL_STOPALL			0x03 
+	USB_DCTRL_RESET				0x04
+	USB_DCTRL_PAUSE				0x05
+	USB_DCTRL_CONTINUE			0x06
+	*/
+	uint8_t command[2] = {0xf3};
 	
-	const uint8_t ac_disable[] = {
-		0xf1, 0x10, 0x40, 0x00, 0x7f, 0x00,
-		0xf3, 0x6a
-	};
-
-	FfbSendData(ac_enable, sizeof(ac_enable));
-	
-	if (!enable) {
-		FfbSendData(ac_disable, sizeof(ac_disable));
+	if (usb_control == USB_DCTRL_RESET) {
+		command[1] = 0x1d;
+	} else if (usb_control == USB_DCTRL_STOPALL) {
+		command[1] = 0x6a;
+	} else {
+		return 0; //not supported
 	}
+
+	FfbSendData(command, sizeof(command));
+	//Is a wait needed?
+	return 1; //supported command
 }
 
 const uint8_t* FfbwheelGetSysExHeader(uint8_t* hdr_len)
@@ -159,8 +166,16 @@ void FfbwheelSendModify(uint8_t effectId, uint8_t address, uint16_t value)
 void FfbwheelModifyDuration(uint8_t effectState, uint16_t* midi_data_param, uint8_t effectId, uint16_t duration)
 {
 	//FfbwheelSendModify(effectId, 0x00, duration);
-	FfbSetParamMidi_14bit(effectState, midi_data_param, effectId, 0x00, duration); //Changed for compatibility but behaviour not checked for wheel
+	FfbSetParamMidi_14bit(effectState, midi_data_param, effectId, 0x00, duration); // CHANGED FOR COMPATIBILITY - NOT TESTED FOR WHEEL
 }
+
+void FfbwheelModifyDeviceGain(uint8_t gain)
+{ // TO IMPLEMENT: CHANGED FOR COMPATIBILITY - NOT TESTED FOR WHEEL
+	static const uint8_t gainCommand[] = {0xf1, 0x10, 0x40, 0x00, 0x7f, 0x00}; // only sends max gain for now
+	FfbSendData(gainCommand, sizeof(gainCommand));
+
+}
+
 
 void FfbwheelSetEnvelope(
 	USB_FFBReport_SetEnvelope_Output_Data_t* data,

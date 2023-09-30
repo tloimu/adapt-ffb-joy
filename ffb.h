@@ -284,6 +284,13 @@ void FfbEnableEffectId(uint8_t inId, uint8_t inEnable);
 #define USB_EFFECT_FRICTION		0x0B
 #define USB_EFFECT_CUSTOM		0x0C
 
+#define USB_DCTRL_ACTUATORS_DISABLE	0x01
+#define USB_DCTRL_ACTUATORS_ENABLE	0x02 
+#define USB_DCTRL_STOPALL			0x03 
+#define USB_DCTRL_RESET				0x04
+#define USB_DCTRL_PAUSE				0x05
+#define USB_DCTRL_CONTINUE			0x06
+
 #define MAX_MIDI_MSG_LEN 27 /* enough to hold longest midi message data part, FFP_MIDI_Effect_Basic */
 
 /* start of midi data common for both pro and wheel protocols */
@@ -307,7 +314,7 @@ typedef struct
 	{
 	void (*EnableInterrupts)(void);
 	const uint8_t* (*GetSysExHeader)(uint8_t* hdr_len);
-	void (*SetAutoCenter)(uint8_t enable);
+	uint8_t (*DeviceControl)(uint8_t usb_control);
 	uint8_t (*UsbToMidiEffectType)(uint8_t usb_effect_type);
 	
 	void (*StartEffect)(uint8_t eid);
@@ -316,7 +323,8 @@ typedef struct
 	
 	void (*SendModify)(uint8_t effectId, uint8_t address, uint16_t value);	
 	void (*ModifyDuration)(uint8_t effectState, uint16_t* midi_data_param, uint8_t effectId, uint16_t duration);
-	
+	void (*ModifyDeviceGain)(uint8_t gain);
+
 	void (*CreateNewEffect)(USB_FFBReport_CreateNewEffect_Feature_Data_t* inData, volatile TEffectState* effect);
 	void (*SetEnvelope)(USB_FFBReport_SetEnvelope_Output_Data_t* data, volatile TEffectState* effect);
 	void (*SetCondition)(USB_FFBReport_SetCondition_Output_Data_t* data, volatile TEffectState* effect);
