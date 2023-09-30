@@ -292,6 +292,7 @@ const uint16_t OutReportSize[] = {
 	sizeof(USB_FFBReport_DeviceControl_Output_Data_t),	// 12
 	sizeof(USB_FFBReport_DeviceGain_Output_Data_t),	// 13
 	sizeof(USB_FFBReport_SetCustomForce_Output_Data_t),	// 14
+	sizeof(USB_FFBReport_CreateNewEffect_Feature_Data_t),	// 15 SPOOFED ID
 	};
 
 void FfbHandle_EffectOperation(USB_FFBReport_EffectOperation_Output_Data_t *data);
@@ -358,7 +359,7 @@ void FfbOnUsbData(uint8_t *data, uint16_t len)
 		case 14:
 			FfbHandle_SetCustomForce((USB_FFBReport_SetCustomForce_Output_Data_t*) data);
 			break;
-		case 91: //=0x5B This is a spoofed ID to allow CreateNewEffect to be triggered over USB virtual COM PORT, since it is a Feature Report not an Output Report
+		case 15: //This is a spoofed ID to allow CreateNewEffect to be triggered over USB virtual COM PORT, since it is a Feature Report not an Output Report
 			FfbOnCreateNewEffect((USB_FFBReport_CreateNewEffect_Feature_Data_t*) data, &pidBlockLoadData);
 			break;
 		default:
