@@ -571,15 +571,15 @@ void FfbHandle_DeviceControl(USB_FFBReport_DeviceControl_Output_Data_t *data)
 
 	switch (control)
 	{
-		case USB_DCTRL_ACTUATORS_DISABLE:
-			LogTextLf("Disable Actuators");
-			if (success)
-				pidState.status &= ~(1 << 1);
-			break;
 		case USB_DCTRL_ACTUATORS_ENABLE:
 			LogTextLf("Enable Actuators");
 			if (success)
 				pidState.status |= (1 << 1);
+			break;
+		case USB_DCTRL_ACTUATORS_DISABLE:
+			LogTextLf("Disable Actuators");
+			if (success)
+				pidState.status &= ~(1 << 1);
 			break;
 		case USB_DCTRL_STOPALL:
 			LogTextLf("Stop All Effects");
