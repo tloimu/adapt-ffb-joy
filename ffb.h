@@ -252,7 +252,7 @@ uint8_t FfbSetParamMidi_7bit(uint8_t effectState, volatile uint8_t *midi_data_pa
 uint16_t UsbUint16ToMidiUint14_Time(uint16_t inUsbValue);
 uint16_t UsbUint16ToMidiUint14(uint16_t inUsbValue);
 int16_t UsbInt8ToMidiInt14(int8_t inUsbValue);
-uint8_t CalcGain(uint8_t usbValue, uint8_t gain);
+int8_t CalcGainCoeff(int8_t usbValue, uint8_t gain);
 
 void FfbEnableSprings(uint8_t inEnable);
 void FfbEnableConstants(uint8_t inEnable);
@@ -307,6 +307,7 @@ typedef struct {
 	// These are used to calculate effect levels and signs
 	uint8_t usb_gain, usb_attackLevel, usb_fadeLevel, usb_direction, invert, range;
 	int16_t usb_magnitude; //Signed for Constant Force use only
+	int8_t usb_coeffAxis0, usb_coeffAxis1;
 	volatile uint8_t	data[MAX_MIDI_MSG_LEN];
 	} TEffectState;
 

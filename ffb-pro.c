@@ -397,6 +397,8 @@ void FfbproSetCondition(
 		FlushDebugBuffer();
 		}
 
+	int8_t coeff = CalcGainCoeff(data->positiveCoefficient, effect->usb_gain);
+
 	switch (common_midi_data->waveForm) {
 		case 0x0d:	// spring (midi: 0x0d)
 		case 0x0e:	// damper (midi: 0x0e)
@@ -408,13 +410,16 @@ void FfbproSetCondition(
 			uint16_t midi_offsetAxis1;
 			
 			if (data->parameterBlockOffset == 0) {
+				effect->usb_coeffAxis0 = data->positiveCoefficient;
 				FfbSetParamMidi_14bit(effect->state, &(midi_data->coeffAxis0), eid, 
-										FFP_MIDI_MODIFY_COEFFAXIS0, UsbInt8ToMidiInt14(data->positiveCoefficient));
+										FFP_MIDI_MODIFY_COEFFAXIS0, UsbInt8ToMidiInt14(coeff));
 				FfbSetParamMidi_14bit(effect->state, &(midi_data->offsetAxis0), eid, 
 										FFP_MIDI_MODIFY_OFFSETAXIS0, UsbInt8ToMidiInt14(data->cpOffset));
+				
 			} else {
+				effect->usb_coeffAxis1 = data->positiveCoefficient;
 				FfbSetParamMidi_14bit(effect->state, &(midi_data->coeffAxis1), eid, 
-										FFP_MIDI_MODIFY_COEFFAXIS1, UsbInt8ToMidiInt14(data->positiveCoefficient));
+										FFP_MIDI_MODIFY_COEFFAXIS1, UsbInt8ToMidiInt14(coeff));
 				if (data->cpOffset == 0x80)
 					midi_offsetAxis1 = 0x007f;
 				else
@@ -431,12 +436,15 @@ void FfbproSetCondition(
 			volatile FFP_MIDI_Effect_Friction *midi_data =
 					(FFP_MIDI_Effect_Friction *)&effect->data;
 
-			if (data->parameterBlockOffset == 0)
+			if (data->parameterBlockOffset == 0) {
+				effect->usb_coeffAxis0 = data->positiveCoefficient;
 				FfbSetParamMidi_14bit(effect->state, &(midi_data->coeffAxis0), eid, 
-										FFP_MIDI_MODIFY_COEFFAXIS0, UsbInt8ToMidiInt14(data->positiveCoefficient));
-			else
+										FFP_MIDI_MODIFY_COEFFAXIS0, UsbInt8ToMidiInt14(coeff));
+			} else {
+				effect->usb_coeffAxis1 = data->positiveCoefficient;
 				FfbSetParamMidi_14bit(effect->state, &(midi_data->coeffAxis1), eid, 
-										FFP_MIDI_MODIFY_COEFFAXIS1, UsbInt8ToMidiInt14(data->positiveCoefficient));
+										FFP_MIDI_MODIFY_COEFFAXIS1, UsbInt8ToMidiInt14(coeff));
+			}
 		}
 		break;
 		
@@ -809,9 +817,18 @@ int FfbproSetEffect(
 				uint16_t offsetAxis0;
 				uint16_t offsetAxis1;
 			*/
-//			volatile FFP_MIDI_Effect_Spring_Inertia_Damper *midi_data = (FFP_MIDI_Effect_Spring_Inertia_Damper *) &gEffectStates[eid].data;
-			midi_data_len = sizeof(FFP_MIDI_Effect_Spring_Inertia_Damper);
 
+			volatile FFP_MIDI_Effect_Spring_Inertia_Damper *midi_data =
+				(FFP_MIDI_Effect_Spring_Inertia_Damper *)&effect->data;
+				
+			effect->usb_gain = data->gain;			
+			FfbSetParamMidi_14bit(effect->state, &(midi_data->coeffAxis0), eid, 
+						FFP_MIDI_MODIFY_COEFFAXIS0, UsbInt8ToMidiInt14(CalcGainCoeff(effect->usb_coeffAxis0, data->gain)));
+			FfbSetParamMidi_14bit(effect->state, &(midi_data->coeffAxis1), eid, 
+						FFP_MIDI_MODIFY_COEFFAXIS1, UsbInt8ToMidiInt14(CalcGainCoeff(effect->usb_coeffAxis1, data->gain)));
+						
+			midi_data_len = sizeof(FFP_MIDI_Effect_Spring_Inertia_Damper);
+			
 		}
 		break;
 		
@@ -827,7 +844,15 @@ int FfbproSetEffect(
 				uint16_t coeffAxis0;
 				uint16_t coeffAxis1;
 			*/
-//			volatile FFP_MIDI_Effect_Friction *midi_data = (FFP_MIDI_Effect_Friction *) &gEffectStates[eid].data;
+			volatile FFP_MIDI_Effect_Friction *midi_data =
+					(FFP_MIDI_Effect_Friction *)&effect->data;
+					
+			effect->usb_gain = data->gain;			
+			FfbSetParamMidi_14bit(effect->state, &(midi_data->coeffAxis0), eid, 
+						FFP_MIDI_MODIFY_COEFFAXIS0, UsbInt8ToMidiInt14(CalcGainCoeff(effect->usb_coeffAxis0, data->gain)));
+			FfbSetParamMidi_14bit(effect->state, &(midi_data->coeffAxis1), eid, 
+						FFP_MIDI_MODIFY_COEFFAXIS1, UsbInt8ToMidiInt14(CalcGainCoeff(effect->usb_coeffAxis1, data->gain)));			
+			
 			midi_data_len = sizeof(FFP_MIDI_Effect_Friction);
 
 		}
@@ -867,11 +892,12 @@ void FfbproCreateNewEffect(
 	midi_data->fadeLevel = 0x00;
 	midi_data->fadeTime = 0x0000;
 	midi_data->gain = 0x7F;
+	midi_data->triggerButton = 0x0000;
 	
 	// Constants
 	midi_data->command = 0x23;
 	midi_data->unknown1 = 0x7F;
-	midi_data->triggerButton = 0x0000;	
+	
 	midi_data->sampleRate = 0x0064;
 	midi_data->truncate = 0x4E10;
 	if (inData->effectType == 0x01)	// constant
@@ -879,4 +905,3 @@ void FfbproCreateNewEffect(
 	else
 		midi_data->param2 = 0x0101;
 }
-

@@ -251,12 +251,11 @@ int16_t UsbInt8ToMidiInt14(int8_t inUsbValue)
 	return value;
 	}
 
-// Calculates the final value of the given <value> when taking in given <gain> into account.
-// Returns MIDI value (i.e. max 0..7f).
-uint8_t CalcGain(uint8_t usbValue, uint8_t gain)
+// Calculates the final value of the given coefficient <value> when taking in given <gain> into account.
+int8_t CalcGainCoeff(int8_t usbValue, uint8_t gain)
 	{
-	uint16_t v = usbValue;
-	return (((v * gain) / 255) >> 1 ) & 0x7f;
+	int16_t v = usbValue;
+	return ((v * gain) / 255);
 	}
 
 // Lengths of each report type
@@ -367,6 +366,8 @@ void FfbOnCreateNewEffect(USB_FFBReport_CreateNewEffect_Feature_Data_t* inData, 
 		effect->usb_direction = 0;
 		effect->invert = 0;
 		effect->range = 255;
+		effect->usb_coeffAxis0 = 0;
+		effect->usb_coeffAxis1 = 0;
 
 		((midi_data_common_t*)effect->data)->waveForm = ffb->UsbToMidiEffectType(inData->effectType - 1);
 		
