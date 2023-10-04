@@ -96,4 +96,6 @@ uint8_t FfbproUsbToMidiEffectType(uint8_t usb_effect_type);
 
 #define FFP_MIDI_MODIFY_DEVICEGAIN		0x7C
 
+#define FFP_SAMPLERATE_DEFAULT 			0x0064 //100Hz
+
 #endif // _FFB_PRO_

@@ -251,6 +251,12 @@ int16_t UsbInt8ToMidiInt14(int8_t inUsbValue)
 	return value;
 	}
 
+uint16_t UsbPeriodToFrequencyHz(uint16_t period)
+	{
+	//USB Period in ms to Frequency in Hz
+	return ((2000 / period) + 1) / 2; //Rounds to nearest Hz i.e. 1.51Hz rounds up to 2Hz
+	}
+
 // Calculates the final value of the given coefficient <value> when taking in given <gain> into account.
 int8_t CalcGainCoeff(int8_t usbValue, uint8_t gain)
 	{
@@ -366,6 +372,8 @@ void FfbOnCreateNewEffect(USB_FFBReport_CreateNewEffect_Feature_Data_t* inData, 
 		effect->usb_direction = 0;
 		effect->invert = 0;
 		effect->range = 255;
+		effect->frequency = 1; // Hz
+		effect->usb_samplePeriod = USB_SAMPLEPERIOD_DEFAULT;
 		effect->usb_coeffAxis0 = 0;
 		effect->usb_coeffAxis1 = 0;
 

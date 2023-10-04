@@ -252,6 +252,7 @@ uint8_t FfbSetParamMidi_7bit(uint8_t effectState, volatile uint8_t *midi_data_pa
 uint16_t UsbUint16ToMidiUint14_Time(uint16_t inUsbValue);
 uint16_t UsbUint16ToMidiUint14(uint16_t inUsbValue);
 int16_t UsbInt8ToMidiInt14(int8_t inUsbValue);
+uint16_t UsbPeriodToFrequencyHz(uint16_t period);
 int8_t CalcGainCoeff(int8_t usbValue, uint8_t gain);
 
 void FfbEnableSprings(uint8_t inEnable);
@@ -268,6 +269,8 @@ void FfbEnableEffectId(uint8_t inId, uint8_t inEnable);
 
 #define USB_DURATION_INFINITE	0xFFFF
 #define MIDI_DURATION_INFINITE	0x0000
+
+#define USB_SAMPLEPERIOD_DEFAULT	0x0000
 
 #define USB_TRIGGERBUTTON_NULL	0xFF
 
@@ -304,12 +307,13 @@ typedef struct {
 typedef struct {
 	uint8_t state;	// see constants <MEffectState_*>
 	uint16_t usb_duration, usb_fadeTime;	// used to calculate fadeTime to MIDI, since in USB it is given as time difference from the end while in MIDI it is given as time from start
-	// These are used to calculate effect levels and signs
+	// These are used to calculate effect parameters when not all data is available in the isolated output report
 	uint8_t usb_gain, usb_attackLevel, usb_fadeLevel, usb_direction, invert, range;
+	uint16_t frequency, usb_samplePeriod; 
 	int16_t usb_magnitude; //Signed for Constant Force use only
 	int8_t usb_coeffAxis0, usb_coeffAxis1;
 	volatile uint8_t	data[MAX_MIDI_MSG_LEN];
-	} TEffectState;
+	} TEffectState; // This takes up a lot of RAM when stored for all effects. Can stored parameters be rationalised?
 
 typedef struct
 	{
