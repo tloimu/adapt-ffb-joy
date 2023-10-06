@@ -119,5 +119,6 @@ int  FfbwheelSetEffect(USB_FFBReport_SetEffect_Output_Data_t *data, volatile TEf
 void FfbwheelCreateNewEffect(USB_FFBReport_CreateNewEffect_Feature_Data_t* inData, volatile TEffectState* effect);
 
 uint8_t FfbwheelUsbToMidiEffectType(uint8_t usb_effect_type);
+uint8_t FfbwheelEffectMemFull(uint8_t new_midi_type);
 
 #endif // _FFB_WHEEL_

@@ -6,6 +6,7 @@
   with some room for additional extra controls.
 
   Copyright 2012  Tero Loimuneva (tloimu [at] gmail [dot] com)
+  Copyright 2023  Ed Wilkinson 
   MIT License.
 
   Permission to use, copy, modify, distribute, and sell this
@@ -247,6 +248,7 @@ typedef struct
 
 extern volatile TDisabledEffectTypes gDisabledEffects;
 
+uint8_t GetMidiEffectType(uint8_t id);
 void FfbSendSysEx(const uint8_t* midi_data, uint8_t len);
 uint8_t FfbSetParamMidi_14bit(uint8_t effectState, volatile uint16_t *midi_data_param, uint8_t effectId, uint8_t address, uint16_t value);
 uint8_t FfbSetParamMidi_7bit(uint8_t effectState, volatile uint8_t *midi_data_param, uint8_t effectId, uint8_t address, uint8_t value);
@@ -322,6 +324,7 @@ typedef struct
 	const uint8_t* (*GetSysExHeader)(uint8_t* hdr_len);
 	uint8_t (*DeviceControl)(uint8_t usb_control);
 	uint8_t (*UsbToMidiEffectType)(uint8_t usb_effect_type);
+	uint8_t (*EffectMemFull)(uint8_t new_midi_type);
 	
 	void (*StartEffect)(uint8_t eid);
 	void (*StopEffect)(uint8_t eid);

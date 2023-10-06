@@ -49,6 +49,7 @@ const FFB_Driver ffb_drivers[2] =
 		.GetSysExHeader = FfbproGetSysExHeader,
 		.DeviceControl = FfbproDeviceControl,
 		.UsbToMidiEffectType = FfbproUsbToMidiEffectType,
+		.EffectMemFull = FfbproEffectMemFull,
 		.StartEffect = FfbproStartEffect,
 		.StopEffect = FfbproStopEffect,
 		.FreeEffect = FfbproFreeEffect,
@@ -68,6 +69,7 @@ const FFB_Driver ffb_drivers[2] =
 		.GetSysExHeader = FfbwheelGetSysExHeader,
 		.DeviceControl = FfbwheelDeviceControl,
 		.UsbToMidiEffectType = FfbwheelUsbToMidiEffectType,
+		.EffectMemFull = FfbwheelEffectMemFull,
 		.StartEffect = FfbwheelStartEffect,
 		.StopEffect = FfbwheelStopEffect,
 		.FreeEffect = FfbwheelFreeEffect,
@@ -176,6 +178,16 @@ void FreeAllEffects(void)
 	}
 
 // Utilities
+
+uint8_t GetMidiEffectType(uint8_t id)
+{
+	if (id > MAX_EFFECTS || gEffectStates[id].state == MEffectState_Free) {
+		return 0xFF; //use this as null value since it can't be a valid value in MIDI
+	} else {
+		volatile TEffectState* effect = &gEffectStates[id];
+		return ((midi_data_common_t*)effect->data)->waveForm;
+	}
+}
 
 void FfbSendSysEx(const uint8_t* midi_data, uint8_t len)
 {	
@@ -354,8 +366,14 @@ void FfbOnUsbData(uint8_t *data, uint16_t len)
 void FfbOnCreateNewEffect(USB_FFBReport_CreateNewEffect_Feature_Data_t* inData, USB_FFBReport_PIDBlockLoad_Feature_Data_t *outData)
 {
 	outData->reportId = 6;
-	outData->effectBlockIndex = GetNextFreeEffect();
 	
+	uint8_t midi_effect_type = ffb->UsbToMidiEffectType(inData->effectType - 1);
+	if (ffb->EffectMemFull(midi_effect_type)) {
+		outData->effectBlockIndex = 0;
+	} else {
+		outData->effectBlockIndex = GetNextFreeEffect(); // can also return 0 if adapter full
+	}
+
 	if (outData->effectBlockIndex == 0) {
 		outData->loadStatus = 2;	// 1=Success,2=Full,3=Error
 	} else {
@@ -377,7 +395,7 @@ void FfbOnCreateNewEffect(USB_FFBReport_CreateNewEffect_Feature_Data_t* inData, 
 		effect->usb_coeffAxis0 = 0;
 		effect->usb_coeffAxis1 = 0;
 
-		((midi_data_common_t*)effect->data)->waveForm = ffb->UsbToMidiEffectType(inData->effectType - 1);
+		((midi_data_common_t*)effect->data)->waveForm = midi_effect_type;
 		
 		ffb->CreateNewEffect(inData, effect);
 	}

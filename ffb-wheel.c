@@ -49,6 +49,11 @@ uint8_t FfbwheelUsbToMidiEffectType(uint8_t usb_effect_type)
 	return usbToMidiEffectType[usb_effect_type];
 }
 
+uint8_t FfbwheelEffectMemFull(uint8_t new_midi_type)
+{
+	return 0; //Supported quantities of each effect not yet known
+}
+
 /**
  * Initialize wheel for FF. Releases spring effect.
  *

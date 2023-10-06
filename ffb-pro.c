@@ -55,6 +55,52 @@ uint8_t FfbproUsbToMidiEffectType(uint8_t usb_effect_type)
 	return usbToMidiEffectType[usb_effect_type];
 }
 
+uint8_t FfbproEffectMemFull(uint8_t new_midi_type)
+{
+	uint8_t count_waveform = 0,
+			count_spring = 0, count_damper = 0,
+			count_inertia = 0, count_friction = 0;
+	
+	uint8_t midi_type = new_midi_type; //count the new one first
+	
+	for (uint8_t id = 2; id <= (MAX_EFFECTS + 1); id++) {
+		switch (midi_type) {
+			case 0x12:
+			case 0x06:
+			case 0x05:
+			case 0x02:
+			case 0x08:
+			case 0x0A:
+			case 0x0B:
+				count_waveform++;
+				break;
+			case 0x0D:
+				count_spring++;
+				break;		
+			case 0x0E:
+				count_damper++;
+				break;	
+			case 0x0F:
+				count_inertia++;
+				break;	
+			case 0x10:
+				count_friction++;
+				break;
+//			case 0x01:
+//				count_custom++; //limit of 4
+		}
+		midi_type = GetMidiEffectType(id);
+	}
+	
+	if (count_waveform > 10 || count_spring > 2 || count_damper > 2 || 
+		count_inertia > 2 || count_friction > 2) {
+		return 1;
+	} else {
+		return 0;
+	}
+	//The FFP limit on all loaded effects is 32 total, but we can't get there with the USB PID supported effects only!
+}
+
 static void FfbproInitPulses(uint8_t count)
 {
 	while (count--) {

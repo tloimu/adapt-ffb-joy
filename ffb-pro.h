@@ -75,6 +75,7 @@ int  FfbproSetEffect(USB_FFBReport_SetEffect_Output_Data_t *data, volatile TEffe
 void FfbproCreateNewEffect(USB_FFBReport_CreateNewEffect_Feature_Data_t* inData, volatile TEffectState* effect);
 
 uint8_t FfbproUsbToMidiEffectType(uint8_t usb_effect_type);
+uint8_t FfbproEffectMemFull(uint8_t new_midi_type);
 
 #define FFP_MIDI_MODIFY_DURATION		0x40
 #define FFP_MIDI_MODIFY_TRIGGERBUTTON	0x44
