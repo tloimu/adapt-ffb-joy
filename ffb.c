@@ -380,20 +380,6 @@ void FfbOnCreateNewEffect(USB_FFBReport_CreateNewEffect_Feature_Data_t* inData, 
 		outData->loadStatus = 1;	// 1=Success,2=Full,3=Error
 		
 		volatile TEffectState* effect = &gEffectStates[outData->effectBlockIndex];
-		
-		effect->usb_duration = USB_DURATION_INFINITE;
-		effect->usb_fadeTime = USB_DURATION_INFINITE;
-		effect->usb_gain = 0xFF;
-		effect->usb_attackLevel = 0xFF;
-		effect->usb_fadeLevel = 0xFF;
-		effect->usb_magnitude = 0;
-		effect->usb_direction = 0;
-		effect->invert = 0;
-		effect->range = 255;
-		effect->frequency = 1; // Hz
-		effect->usb_samplePeriod = USB_SAMPLEPERIOD_DEFAULT;
-		effect->usb_coeffAxis0 = 0;
-		effect->usb_coeffAxis1 = 0;
 
 		((midi_data_common_t*)effect->data)->waveForm = midi_effect_type;
 		
@@ -453,7 +439,6 @@ void FfbHandle_SetEffect(USB_FFBReport_SetEffect_Output_Data_t *data)
 	} else {
 		midi_duration = UsbUint16ToMidiUint14_Time(data->duration); // MIDI unit is 2ms
 	}
-	effect->usb_duration = data->duration;	// store for later calculation of <fadeTime>
 	
 	ffb->ModifyDuration(effect->state, &(midi_data->duration), data->effectBlockIndex, midi_duration);
 
@@ -879,7 +864,7 @@ uint8_t FfbDebugListEffects(uint8_t *index)
 		LogTextP(PSTR(" (Disabled)\n"));
 	else
 		LogTextP(PSTR(" (Enabled)\n"));
-
+/* //These variables don't now exist for all effects - could be accessed for some effects share_data
 	if (e->state)
 		{
 		LogTextP(PSTR("  duration="));
@@ -889,7 +874,7 @@ uint8_t FfbDebugListEffects(uint8_t *index)
 		LogTextP(PSTR("\n  gain="));
 		LogBinary(&e->usb_gain, 1);
 		}
-
+*/
 	*index = *index + 1;
 
 	return 1;

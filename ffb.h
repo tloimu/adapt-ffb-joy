@@ -300,6 +300,7 @@ void FfbEnableEffectId(uint8_t inId, uint8_t inEnable);
 #define USB_DCTRL_CONTINUE			0x06
 
 #define MAX_MIDI_MSG_LEN 27 /* enough to hold longest midi message data part, FFP_MIDI_Effect_Basic */
+#define MAX_SHARE_DATA 12 /* enough bytes to hold all data that must be shared between Output reports for any effect type*/
 
 /* start of midi data common for both pro and wheel protocols */
 typedef struct {
@@ -311,14 +312,15 @@ typedef struct {
 
 typedef struct {
 	uint8_t state;	// see constants <MEffectState_*>
-	uint16_t usb_duration, usb_fadeTime;	// used to calculate fadeTime to MIDI, since in USB it is given as time difference from the end while in MIDI it is given as time from start
+	uint8_t share_data[MAX_SHARE_DATA]; // All data to be shared between Output reports for calculating MIDI parameters coupled to multiple USB parameters
+/*	uint16_t usb_duration, usb_fadeTime;	// used to calculate fadeTime to MIDI, since in USB it is given as time difference from the end while in MIDI it is given as time from start
 	// These are used to calculate effect parameters when not all data is available in the isolated output report
 	uint8_t usb_gain, usb_attackLevel, usb_fadeLevel, usb_direction, invert, range;
 	uint16_t frequency, usb_samplePeriod; 
 	int16_t usb_magnitude; //Signed for Constant Force use only
-	int8_t usb_coeffAxis0, usb_coeffAxis1;
+	int8_t usb_coeffAxis0, usb_coeffAxis1; */
 	volatile uint8_t	data[MAX_MIDI_MSG_LEN];
-	} TEffectState; // This takes up a lot of RAM when stored for all effects. Can stored parameters be rationalised?
+	} TEffectState;
 
 typedef struct
 	{

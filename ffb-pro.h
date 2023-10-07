@@ -53,6 +53,47 @@ typedef struct
 	uint16_t coeffAxis1;
 	} FFP_MIDI_Effect_Friction;
 
+// Data structures: to be shared between Output reports for calculating MIDI parameters coupled to multiple USB parameters
+// Set [MAX_SHARE_DATA] bytes to largest of
+typedef struct
+	{
+	uint16_t usb_duration;
+	uint16_t usb_fadeTime;
+	uint8_t usb_attackLevel;
+	uint8_t usb_fadeLevel;
+	uint8_t range;	
+	uint16_t usb_samplePeriod;
+	uint16_t frequency;
+	uint8_t invert;
+	} FFP_Share_Periodic_Ramp;
+	
+typedef struct
+	{
+	uint16_t usb_duration;
+	uint16_t usb_fadeTime;
+	uint8_t usb_attackLevel;
+	uint8_t usb_fadeLevel;
+	uint8_t range;			//Not varied for constant but simplifies use of common structure
+	uint8_t usb_magnitude;
+	uint8_t usb_direction;
+	} FFP_Share_Constant;
+	
+typedef struct
+	{
+	uint16_t usb_duration;
+	uint16_t usb_fadeTime;
+	uint8_t usb_attackLevel;
+	uint8_t usb_fadeLevel;
+	uint8_t range;		
+	} FFP_Share_Basic_common_t;	
+
+typedef struct	
+	{
+	uint8_t usb_coeffAxis0;
+	uint8_t usb_coeffAxis1;
+	uint8_t usb_gain;
+	} FFP_Share_Condition;
+
 void FfbproEnableInterrupts(void);
 uint8_t FfbproDeviceControl(uint8_t usb_control);
 const uint8_t* FfbproGetSysExHeader(uint8_t* hdr_len);
