@@ -40,8 +40,10 @@
  */
 
 // Maximum number of parallel effects in memory
-#define MAX_EFFECTS 18  
+#define MAX_EFFECTS 19  //Actually Max Effect ID , but effects IDs start at 0x02 so 1 less than this
 //FFP can support 10 waveforms + 2 of each conditional = 18 not including other unsupported effect types
+//Wheel limits?
+
 	
 // ---- Input
 
