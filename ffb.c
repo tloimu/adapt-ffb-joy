@@ -463,7 +463,7 @@ void FfbOnPIDPool(USB_FFBReport_PIDPool_Feature_Data_t *data)
 
 	data->reportId = 7;
 	data->ramPoolSize = 0xFFFF;
-	data->maxSimultaneousEffects = 0x0A;	// FFP supports playing up to 10 simultaneous effects
+	data->maxSimultaneousEffects = 0x10;	// FFP supports playing up to 16 simultaneous effects
 	data->memoryManagement = 3;
 	}
 
