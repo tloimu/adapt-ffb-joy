@@ -12,7 +12,7 @@ typedef struct
 	{
 	uint8_t command;	// always 0x23	-- start counting checksum from here
 	uint8_t waveForm;	// 2=sine, 5=Square, 6=RampUp, 7=RampDown, 8=Triange, 0x12=Constant
-	uint8_t unknown1;	// Overwrite an allocated effect 
+	uint8_t unknown1;	// Overwrite an allocated effect - leave as unknown1 because we don't need it and don't know what it does for wheel
 	uint16_t duration;	// unit=2ms
 	uint16_t triggerButton;	// Bitwise buttons 1 to 9 from LSB
 	uint16_t direction;
@@ -21,7 +21,7 @@ typedef struct
 	uint16_t truncate;		//default 0x10 0x4e = 10000 for full waveform
 	uint8_t attackLevel;
 	uint16_t	attackTime;
-	uint8_t		magnitude;
+	uint8_t		magnitude; //i.e. envelope sustain
 	uint16_t	fadeTime;
 	uint8_t	fadeLevel;
 	uint16_t frequency;	// unit=Hz; 1 for constant and ramps
@@ -33,7 +33,7 @@ typedef struct
 	{
 	uint8_t command;	// always 0x23	-- start counting checksum from here
 	uint8_t waveForm;	// 0xd=Spring, 0x0e=Damper, 0xf=Inertia
-	uint8_t unknown1;	// Overwrite an allocated effect
+	uint8_t unknown1;	// Overwrite an allocated effect - leave as unknown1 because we don't need it and don't know what it does for wheel
 	uint16_t duration;	// unit=2ms
 	uint16_t triggerButton;	// Bitwise buttons 1 to 9 from LSB
 	uint16_t coeffAxis0;
@@ -46,7 +46,7 @@ typedef struct
 	{
 	uint8_t command;	// always 0x23	-- start counting checksum from here
 	uint8_t waveForm;	// 0x10=Friction
-	uint8_t unknown1;	// Overwrite an allocated effect
+	uint8_t unknown1;	// Overwrite an allocated effect - leave as unknown1 because we don't need it and don't know what it does for wheel
 	uint16_t duration;	// unit=2ms
 	uint16_t triggerButton;	// Bitwise buttons 1 to 9 from LSB
 	uint16_t coeffAxis0;

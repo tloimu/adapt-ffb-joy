@@ -824,20 +824,6 @@ void FfbSendDisable()
 	{
 	}
 
-/*
-typedef struct {
-	uint8_t state;	// see constants <MEffectState_*>
-	uint16_t usb_duration, usb_fadeTime;	// used to calculate fadeTime to MIDI, since in USB it is given as time difference from the end while in MIDI it is given as time from start
-	// These are used to calculate effects of USB gain to MIDI data
-	uint8_t usb_gain, usb_offset, usb_attackLevel, usb_fadeLevel;
-	uint8_t usb_magnitude;
-	FFP_MIDI_Effect_Basic	data;	// For FFP, this is enough for all types of effects - cast for other effect types when necessary
-	} TEffectState;
-
-const uint8_t MEffectState_Allocated = 0x01;
-const uint8_t MEffectState_Playing = 0x02;
-const uint8_t MEffectState_SentToJoystick = 0x04;
-*/
 
 uint8_t FfbDebugListEffects(uint8_t *index)
 	{
