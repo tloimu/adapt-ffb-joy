@@ -314,7 +314,7 @@ void FfbOnUsbData(uint8_t *data, uint16_t len)
 
 	uint8_t effectId = data[1]; // effectBlockIndex is always the second byte.
 	
-	USB_FFBReport_PIDBlockLoad_Feature_Data_t pidBlockLoadData; //do nothing with this
+
 	
 	switch (data[0])	// reportID
 		{
@@ -359,9 +359,14 @@ void FfbOnUsbData(uint8_t *data, uint16_t len)
 		case 14:
 			FfbHandle_SetCustomForce((USB_FFBReport_SetCustomForce_Output_Data_t*) data);
 			break;
-		case 15: //This is a spoofed ID to allow CreateNewEffect to be triggered over USB virtual COM PORT, since it is a Feature Report not an Output Report
+		#ifdef DEBUG_ENABLE_USB	// only want to allow this behaviour when debugging since it should not be triggered otherwise
+		case 15: 
+			{// This is a spoofed ID to allow CreateNewEffect to be triggered over USB virtual COM PORT, since it is a Feature Report not an Output Report
+			USB_FFBReport_PIDBlockLoad_Feature_Data_t pidBlockLoadData; // do nothing with this
 			FfbOnCreateNewEffect((USB_FFBReport_CreateNewEffect_Feature_Data_t*) data, &pidBlockLoadData);
 			break;
+			}
+		#endif // DEBUG_ENABLE_USB	
 		default:
 			break;
 		};
