@@ -6,6 +6,7 @@
   with some room for additional extra controls.
 
   Copyright 2012  Tero Loimuneva (tloimu [at] gmail [dot] com)
+  Copyright 2023  Ed Wilkinson 
   MIT License.
 
   Permission to use, copy, modify, distribute, and sell this
@@ -39,7 +40,10 @@
  */
 
 // Maximum number of parallel effects in memory
-#define MAX_EFFECTS 20
+#define MAX_EFFECTS 19  //Actually Max Effect ID , but effects IDs start at 0x02 so 1 less than this
+//FFP can support 10 waveforms + 2 of each conditional = 18 not including other unsupported effect types
+//Wheel limits?
+
 	
 // ---- Input
 
@@ -148,7 +152,7 @@ typedef struct
 typedef struct
 	{ // FFB: Device Control Output Report
 	uint8_t	reportId;	// =12
-	uint8_t control;	// 1=Enable Actuators, 2=Disable Actuators, 4=Stop All Effects, 8=Reset, 16=Pause, 32=Continue
+	uint8_t control;	// 1=Enable Actuators, 2=Disable Actuators, 3=Stop All Effects, 4=Reset, 5=Pause, 6=Continue
 	} USB_FFBReport_DeviceControl_Output_Data_t;
 
 typedef struct
@@ -246,10 +250,15 @@ typedef struct
 
 extern volatile TDisabledEffectTypes gDisabledEffects;
 
+uint8_t GetMidiEffectType(uint8_t id);
 void FfbSendSysEx(const uint8_t* midi_data, uint8_t len);
+uint8_t FfbSetParamMidi_14bit(uint8_t effectState, volatile uint16_t *midi_data_param, uint8_t effectId, uint8_t address, uint16_t value);
+uint8_t FfbSetParamMidi_7bit(uint8_t effectState, volatile uint8_t *midi_data_param, uint8_t effectId, uint8_t address, uint8_t value);
+uint16_t UsbUint16ToMidiUint14_Time(uint16_t inUsbValue);
 uint16_t UsbUint16ToMidiUint14(uint16_t inUsbValue);
 int16_t UsbInt8ToMidiInt14(int8_t inUsbValue);
-uint8_t CalcGain(uint8_t usbValue, uint8_t gain);
+uint16_t UsbPeriodToFrequencyHz(uint16_t period);
+int8_t CalcGainCoeff(int8_t usbValue, uint8_t gain);
 
 void FfbEnableSprings(uint8_t inEnable);
 void FfbEnableConstants(uint8_t inEnable);
@@ -263,8 +272,12 @@ void FfbEnableEffectId(uint8_t inId, uint8_t inEnable);
 #define MEffectState_Playing		0x02
 #define MEffectState_SentToJoystick	0x04
 
-#define USB_DURATION_INFINITE	0x7FFF
-#define MIDI_DURATION_INFINITE	0
+#define USB_DURATION_INFINITE	0xFFFF
+#define MIDI_DURATION_INFINITE	0x0000
+
+#define USB_SAMPLEPERIOD_DEFAULT	0x0000
+
+#define USB_TRIGGERBUTTON_NULL	0xFF
 
 #define USB_EFFECT_CONSTANT		0x01
 #define USB_EFFECT_RAMP			0x02
@@ -279,7 +292,15 @@ void FfbEnableEffectId(uint8_t inId, uint8_t inEnable);
 #define USB_EFFECT_FRICTION		0x0B
 #define USB_EFFECT_CUSTOM		0x0C
 
+#define USB_DCTRL_ACTUATORS_ENABLE	0x01
+#define USB_DCTRL_ACTUATORS_DISABLE	0x02 
+#define USB_DCTRL_STOPALL			0x03 
+#define USB_DCTRL_RESET				0x04
+#define USB_DCTRL_PAUSE				0x05
+#define USB_DCTRL_CONTINUE			0x06
+
 #define MAX_MIDI_MSG_LEN 27 /* enough to hold longest midi message data part, FFP_MIDI_Effect_Basic */
+#define MAX_SHARE_DATA 12 /* enough bytes to hold all data that must be shared between Output reports for any effect type*/
 
 /* start of midi data common for both pro and wheel protocols */
 typedef struct {
@@ -291,10 +312,7 @@ typedef struct {
 
 typedef struct {
 	uint8_t state;	// see constants <MEffectState_*>
-	uint16_t usb_duration, usb_fadeTime;	// used to calculate fadeTime to MIDI, since in USB it is given as time difference from the end while in MIDI it is given as time from start
-	// These are used to calculate effects of USB gain to MIDI data
-	uint8_t usb_gain, usb_offset, usb_attackLevel, usb_fadeLevel;
-	uint8_t usb_magnitude;
+	uint8_t share_data[MAX_SHARE_DATA]; // All data to be shared between Output reports for calculating MIDI parameters coupled to multiple USB parameters
 	volatile uint8_t	data[MAX_MIDI_MSG_LEN];
 	} TEffectState;
 
@@ -302,15 +320,18 @@ typedef struct
 	{
 	void (*EnableInterrupts)(void);
 	const uint8_t* (*GetSysExHeader)(uint8_t* hdr_len);
-	void (*SetAutoCenter)(uint8_t enable);
+	uint8_t (*DeviceControl)(uint8_t usb_control);
 	uint8_t (*UsbToMidiEffectType)(uint8_t usb_effect_type);
+	uint8_t (*EffectMemFull)(uint8_t new_midi_type);
 	
 	void (*StartEffect)(uint8_t eid);
 	void (*StopEffect)(uint8_t eid);
 	void (*FreeEffect)(uint8_t eid);
 	
-	void (*ModifyDuration)(uint8_t effectId, uint16_t duration);
-	
+	void (*SendModify)(uint8_t effectId, uint8_t address, uint16_t value);	
+	void (*ModifyDuration)(uint8_t effectState, uint16_t* midi_data_param, uint8_t effectId, uint16_t duration);
+	void (*ModifyDeviceGain)(uint8_t gain);
+
 	void (*CreateNewEffect)(USB_FFBReport_CreateNewEffect_Feature_Data_t* inData, volatile TEffectState* effect);
 	void (*SetEnvelope)(USB_FFBReport_SetEnvelope_Output_Data_t* data, volatile TEffectState* effect);
 	void (*SetCondition)(USB_FFBReport_SetCondition_Output_Data_t* data, volatile TEffectState* effect);
@@ -320,4 +341,4 @@ typedef struct
 	int  (*SetEffect)(USB_FFBReport_SetEffect_Output_Data_t* data, volatile TEffectState* effect);
 	} FFB_Driver;
 
-#endif // _FFB_PRO_
+#endif // _FFB_

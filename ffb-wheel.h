@@ -98,14 +98,17 @@ typedef struct
 } cmd_f0_constant_force_t;
 
 void FfbwheelEnableInterrupts(void);
+uint8_t FfbwheelDeviceControl(uint8_t usb_control);
 const uint8_t* FfbwheelGetSysExHeader(uint8_t* hdr_len);
-void FfbwheelSetAutoCenter(uint8_t enable);
 
 void FfbwheelStartEffect(uint8_t effectId);
 void FfbwheelStopEffect(uint8_t effectId);
 void FfbwheelFreeEffect(uint8_t effectId);
 
-void FfbwheelModifyDuration(uint8_t effectId, uint16_t duration);
+void FfbwheelSendModify(uint8_t effectId, uint8_t address, uint16_t value);
+
+void FfbwheelModifyDuration(uint8_t effectState, uint16_t* midi_data_param, uint8_t effectId, uint16_t duration);
+void FfbwheelModifyDeviceGain(uint8_t gain);
 
 void FfbwheelSetEnvelope(USB_FFBReport_SetEnvelope_Output_Data_t* data, volatile TEffectState* e);
 void FfbwheelSetCondition(USB_FFBReport_SetCondition_Output_Data_t* data, volatile TEffectState* e);
@@ -116,5 +119,6 @@ int  FfbwheelSetEffect(USB_FFBReport_SetEffect_Output_Data_t *data, volatile TEf
 void FfbwheelCreateNewEffect(USB_FFBReport_CreateNewEffect_Feature_Data_t* inData, volatile TEffectState* effect);
 
 uint8_t FfbwheelUsbToMidiEffectType(uint8_t usb_effect_type);
+uint8_t FfbwheelEffectMemFull(uint8_t new_midi_type);
 
 #endif // _FFB_WHEEL_

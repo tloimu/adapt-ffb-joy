@@ -38,7 +38,7 @@
 // Define: ENABLE_JOYSTICK_SERIAL
 //	When defined, includes USB COM serial port to the device
 //	in addition to joystick.
-#define ENABLE_JOYSTICK_SERIAL
+//#define ENABLE_JOYSTICK_SERIAL
 
 	/* Includes: */
 		#include <LUFA/Drivers/USB/USB.h>
