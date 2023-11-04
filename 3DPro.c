@@ -38,14 +38,14 @@
  *	Pinout ATMEGAXU4
  *	================
  *
- *	PB0	Button1		PD0	Button1	(INT)	PF0	--
- *	PB1	Button2		PD1	--				PF1	--
+*	PB0	--			PD0	Button1	(INT)	PF0	--
+ *	PB1	Button2		PD1	--			PF1	--
  *	PB2	Button3		PD2	--				PE2	--
  *	PB3	Button4		PD3	MIDI (out)
- *	PB4	X1 axis			PD4	--			PF4	--
- *	PB5	Y2 axis			PD5	--			PF5	--
- *	PB6	--	PC6	--	PD6	LED	PE6	--	PF6	--
- *	PB7	--	PC7	--	PD7	--			PF7	--
+ *	PB4	X1 axis		PD4	--				PF4	--
+ *	PB5	Y2 axis		PD5	LED				PF5	--
+ *	PB6	Button1		PC6	--	PD6	--		PE6	--	PF6	--
+ *	PB7	--	PC7	--	PD7	--				PF7	--
  *
  *	Pinout AT90USBX6 (out dated!)
  *	================
@@ -78,7 +78,7 @@
 // Port B
 
 #define PBPU		(PU1( PB7) | PU1( PB6) | PU0( PB5) | PU0( PB4) | \
-			 PU1( PB3) | PU1( PB2) | PU1( PB1) | PU1( PB0))
+			 PU1( PB3) | PU1( PB2) | PU1( PB1) | PU0( PB0))
 #define DDB		(DDI(DDB7) | DDI(DDB6) | DDI(DDB5) | DDI(DDB4) | \
 			 DDI(DDB3) | DDI(DDB2) | DDI(DDB1) | DDI(DDB0))
 
