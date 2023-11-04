@@ -41,9 +41,9 @@ typedef struct
 	uint8_t	reportId;	// =1
 	int16_t  X;
 	int16_t  Y;
-	int16_t  Z;
-	int8_t  Rz, Rx, Ry;
-	uint8_t  Rudder;
+	//int16_t  Z;
+	int8_t  Rz; //, Rx, Ry;
+	//uint8_t  Rudder;
 	uint8_t  Throttle;
 	uint16_t Button;
 	uint8_t Hat;
