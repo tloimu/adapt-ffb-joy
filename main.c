@@ -160,6 +160,10 @@ void EVENT_USB_Device_ConfigurationChanged(void)
 volatile bool sPIDStatusPending = false;
 volatile USB_FFBReport_PIDStatus_Input_Data_t sPIDStatus;
 
+// Result of the last Create New Effect (SetReport 0x0305), returned by the host's
+// following Block Load request (GetReport 0x0306)
+static USB_FFBReport_PIDBlockLoad_Feature_Data_t sPIDBlockLoad = { .reportId = 6, .loadStatus = 3 };
+
 
 /** Event handler for the USB_ControlRequest event. This is used to catch and process control requests sent to
  *  the device from the USB host before passing along unhandled control requests to the library for processing
@@ -203,20 +207,19 @@ void EVENT_USB_Device_ControlRequest(void)
 				{
 				LEDs_SetAllLEDs(LEDS_ALL_LEDS);
 
-				/*if (USB_ControlRequest.wValue == 0x0306)
+				if (USB_ControlRequest.wValue == 0x0306)
 					{	// Feature 2: PID Block Load Feature Report
-					LogTextP(PSTR("GetReport PID Block Load Feature"));
-					_delay_us(500);	// Windows needs this delay to register the below feature report correctly
-					USB_FFBReport_PIDBlockLoad_Feature_Data_t featureData;
-					FfbOnPIDBlockLoad(&featureData);
 					Endpoint_ClearSETUP();
 
 					// Write the report data to the control endpoint
-					Endpoint_Write_Control_Stream_LE(&featureData, sizeof(USB_FFBReport_PIDBlockLoad_Feature_Data_t));
+					Endpoint_Write_Control_Stream_LE(&sPIDBlockLoad, sizeof(USB_FFBReport_PIDBlockLoad_Feature_Data_t));
 					Endpoint_ClearOUT();
+
+					// Answer each Create New Effect once; a repeated request reports an error
+					sPIDBlockLoad.effectBlockIndex = 0;
+					sPIDBlockLoad.loadStatus = 3;
 					}
-				else */
-				if (USB_ControlRequest.wValue == 0x0307)
+				else if (USB_ControlRequest.wValue == 0x0307)
 					{	// Feature 3: PID Pool Feature Report
 					USB_FFBReport_PIDPool_Feature_Data_t featureData;
 					FfbOnPIDPool(&featureData);
@@ -255,33 +258,32 @@ void EVENT_USB_Device_ControlRequest(void)
 				{
 				LEDs_SetAllLEDs(LEDS_ALL_LEDS);
 
-				Endpoint_ClearSETUP();
-
 				uint8_t data[10];	// This is enough room for all reports
 				uint16_t len = 0;	// again, enough for all
 
 				len = USB_ControlRequest.wLength;
-				
+				if (len > sizeof(data))
+					{	// Longer than any of our feature reports: refuse rather than overrun the buffer
+					Endpoint_StallTransaction();
+					LEDs_SetAllLEDs(LEDS_NO_LEDS);
+					break;
+					}
+
+				Endpoint_ClearSETUP();
+
 				// Read in the report data from host
 
 				// Read the report data from the control endpoint
 				Endpoint_Read_Control_Stream_LE(&data, len);
-				Endpoint_ClearStatusStage();
 
-				// Process the incoming report
+				// Process the incoming report before completing the status stage: the host sends its
+				// next request (the Block Load GetReport) as soon as this one completes, and that
+				// SETUP must not arrive while this handler is still running
 				if (USB_ControlRequest.wValue == 0x0305)
-					{	// Feature 1
-					_delay_us(500);	// Windows does not like to be answered too quickly
+					{	// Feature 1: Create New Effect; the result is read back by GetReport 0x0306
 //					LogData("    => SetReport CreateNewEffect:", USB_ControlRequest.wValue & 0xFF, data, len);
 
-					USB_FFBReport_PIDBlockLoad_Feature_Data_t pidBlockLoadData;
-					FfbOnCreateNewEffect((USB_FFBReport_CreateNewEffect_Feature_Data_t*) data, &pidBlockLoadData);
-
-					Endpoint_ClearSETUP();
-
-					// Write the report data to the control endpoint
-					Endpoint_Write_Control_Stream_LE(&pidBlockLoadData, sizeof(USB_FFBReport_PIDBlockLoad_Feature_Data_t));
-					Endpoint_ClearOUT();
+					FfbOnCreateNewEffect((USB_FFBReport_CreateNewEffect_Feature_Data_t*) data, &sPIDBlockLoad);
 					}
 				else if (USB_ControlRequest.wValue == 0x0306)
 					{	// Feature 1
@@ -296,6 +298,8 @@ void EVENT_USB_Device_ControlRequest(void)
 /*				else
 					LogData("    => SetReport data: ", USB_ControlRequest.wValue & 0xFF, data, len);
 */
+
+				Endpoint_ClearStatusStage();
 
 				LEDs_SetAllLEDs(LEDS_NO_LEDS);
 				}
